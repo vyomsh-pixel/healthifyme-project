@@ -1,0 +1,27 @@
+cookie:
+  expiry_days: 7
+  key: healthio_secret_key_change_this
+  name: healthio_auth
+credentials:
+  usernames:
+    AARYA:
+      name: AARYA AJAY SINGH
+      password: $2b$12$iZp5Shue./e6VP07twoHEeWz38ZsB0ur2fVKgjzXT6mNI9KQm/wAu
+    Aarya_FIT:
+      name: Aarya
+      password: $2b$12$JWsoV1Kqki2ptQt2YKSjp..5RJa2.h7gtKtlKlSfI5Jt2X2GK2l0G
+    FIT_VYOM:
+      name: Vyom Sharma
+      password: $2b$12$NssQsTJz06.gjZ2AHLiUU.C8bFXA8aNf222tyC5WkypjhGgCFI/t6
+    Fried:
+      name: Chicken
+      password: $2b$12$We1r2l8WULyLDT7Ehz9qhuTan9dlbi64.FteNmyFpL/kEX6LVmGoO
+    SHARMAJI:
+      name: SHARMA
+      password: $2b$12$d0ETfjbcvEEkvX8LbTq0sOuEiQXpSWGv7Uy33BxYNwY347a.nmRbS
+    healthadmin:
+      name: VYOM SHARMA
+      password: $2b$12$CnHq5jHqgo/5Wr/JRkVrh.psWMIlo6nJu8Ddk4tZsspVPB/reQ07a
+    vyom_FIT:
+      name: Vyom
+      password: $2b$12$mn2WK64wD6a1V6f18zg2q./QIyQGKqA2utW4/S2oDzscmL46ekYMa

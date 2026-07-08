@@ -1,0 +1,130 @@
+[
+    {
+        "type": "BMI",
+        "weight": 16000.0,
+        "height": 1.6,
+        "bmi": 6250.0,
+        "timestamp": "2026-05-18 22:18:23"
+    },
+    {
+        "type": "Skin Scan",
+        "result": "Here's an analysis of the face image:\n\n### 1. Skin issues detected\n*   Dark circles under eyes\n*   Slight shine on T-zone (forehead and nose)\n\n### 2. Skincare tips\n*   **For Dark Circles:**\n    *   Prioritize 7-9 hours of sleep nightly.\n    *   Increase daily water intake to stay hydrated.\n    *   Wear sunglasses outdoors to protect the delicate eye area from sun.\n    *   Gently apply products around the eyes, avoiding pulling or tugging.\n*   **For T-zone Shine:**\n    *   Cleanse face twice daily with a mild cleanser.\n    *   Use a lightweight, non-comedogenic moisturizer.\n    *   Blot excess oil on the T-zone throughout the day with blotting papers.\n\n### 3. Home remedies\n*   **For Dark Circles:**\n    *   Place chilled cucumber slices or cold potato slices on eyes for 10-15 minutes.\n    *   Apply cooled, steeped green tea bags to the under-eye area for similar duration.\n    *   Gently massage a few drops of almond oil or vitamin E oil before bed.\n*   **For T-zone Shine:**\n    *   Apply a thin layer of pure aloe vera gel to the T-zone for 15-20 minutes, then rinse.\n    *   Use a homemade mask with finely ground oats and water on the T-zone.\n\n### 4. Product suggestions\n*   **For Dark Circles:**\n    *   Eye cream containing ingredients like caffeine, vitamin C, hyaluronic acid, or peptides.\n    *   Gentle makeup remover to avoid irritating eye area.\n*   **For T-zone Shine:**\n    *   Gel-based or foaming cleanser for normal to combination skin.\n    *   Oil-free, non-comedogenic moisturizer.\n    *   Clay mask for occasional T-zone treatment.\n    *   Broad-spectrum sunscreen (SPF 30+) daily.",
+        "timestamp": "2026-05-18 22:45:10"
+    },
+    {
+        "type": "BMI",
+        "weight": 50.0,
+        "height": 1.6,
+        "bmi": 19.53,
+        "timestamp": "2026-05-18 22:46:40"
+    },
+    {
+        "type": "BMI",
+        "weight": 86.0,
+        "height": 1.6,
+        "bmi": 33.59,
+        "timestamp": "2026-05-19 15:32:54"
+    },
+    {
+        "type": "BMI",
+        "weight": 75.0,
+        "height": 1.55,
+        "bmi": 31.22,
+        "timestamp": "2026-05-19 15:34:02"
+    },
+    {
+        "type": "Food Scan",
+        "result": "Here's an analysis of the food image:\n\n**Recognized Indian Foods:**\n\n1.  **Chicken Butter Masala / Chicken Tikka Masala:** A rich, creamy, tomato-based chicken curry, characterized by its orange hue and garnished with fresh cilantro.\n2.  **Naan Bread:** Two pieces of fluffy, leavened flatbread, with characteristic charred spots from a tandoor.\n3.  **Basmati Rice:** A portion of long-grain white rice, likely plain or lightly seasoned.\n\n**Estimated Food Items and Quantities:**\n\n*   **Chicken Butter Masala / Chicken Tikka Masala:** Approximately 1.5 - 2 cups (including about 5-6 oz of chicken pieces).\n*   **Naan Bread:** 2 medium-sized pieces (plain).\n*   **Basmati Rice:** Approximately 1 cup (cooked).\n\n**Nutritional Estimates (for the entire meal depicted):**\n\nPlease note these are *estimates* and can vary significantly based on specific ingredients, preparation methods, and exact portion sizes.\n\n*   **Calories:** Approximately **1200 - 1500 kcal**\n*   **Protein:** Approximately **60 - 75 g**\n*   **Carbohydrates:** Approximately **160 - 200 g**\n*   **Fats:** Approximately **55 - 75 g**",
+        "timestamp": "2026-05-19 15:35:56"
+    },
+    {
+        "type": "BMI",
+        "weight": 60.0,
+        "height": 1.6,
+        "bmi": 23.44,
+        "timestamp": "2026-05-23 21:26:53"
+    },
+    {
+        "type": "BMI",
+        "weight": 80.0,
+        "height": 1.6,
+        "bmi": 31.25,
+        "timestamp": "2026-05-23 21:50:53"
+    },
+    {
+        "type": "BMI",
+        "weight": 80.0,
+        "height": 1.6,
+        "bmi": 31.25,
+        "timestamp": "2026-05-23 21:51:24"
+    },
+    {
+        "type": "Skin Scan",
+        "result": "Here's an analysis of the face image:\n\n### 1. Skin issues detected\n\n*   Dark circles under eyes\n\n### 2. Skincare tips\n\n*   Get adequate sleep (7-9 hours).\n*   Stay well-hydrated by drinking plenty of water.\n*   Gently cleanse face twice daily.\n*   Always use a broad-spectrum sunscreen (SPF 30+) daily.\n*   Be gentle when touching or rubbing the eye area.\n\n### 3. Home remedies\n\n*   Apply chilled cucumber slices to eyes for 10-15 minutes.\n*   Use cold tea bags (green or black tea) on eyelids.\n*   Gently massage almond oil or coconut oil around the eyes before bed.\n*   Place cold spoons over your eyes to reduce puffiness.\n\n### 4. Product suggestions\n\n*   **Gentle Cleanser:** A mild, hydrating face wash.\n*   **Hydrating Moisturizer:** A non-comedogenic face cream.\n*   **Eye Cream:** Look for ingredients like Vitamin C, Niacinamide, or Hyaluronic Acid.\n*   **Sunscreen:** A daily facial sunscreen with SPF 30 or higher.",
+        "timestamp": "2026-05-23 22:00:04"
+    },
+    {
+        "type": "Food Scan",
+        "result": "Here's an analysis of the Indian food in the image and personalized nutrition advice for Aarya:\n\n---\n\n### Food Image Analysis: Indian Cuisine\n\nThe image displays a delicious and popular Indian meal. Based on the visual characteristics, the food items are:\n\n1.  **Butter Chicken (or Chicken Tikka Masala):** A creamy, orange-red chicken curry, garnished with fresh cilantro. The pieces of chicken appear tender and coated in a rich sauce.\n2.  **White Rice:** A portion of plain white rice, likely basmati, served alongside the curry.\n3.  **Naan Bread:** Several pieces of fluffy, leavened flatbread, characterized by their distinct charred spots from being cooked in a tandoor (clay oven).\n\n---\n\n### Estimated Nutritional Information for the Pictured Meal\n\nPlease note that these are estimates. Actual nutritional values can vary significantly based on specific ingredients, preparation methods, portion sizes, and restaurant recipes.\n\nAssuming a typical restaurant serving:\n\n*   **Butter Chicken (approx. 1.5 cups / 350g serving):**\n    *   **Calories:** 600 - 750 kcal\n    *   **Protein:** 35 - 45 g\n    *   **Carbohydrates:** 25 - 35 g\n    *   **Fats:** 40 - 55 g\n*   **White Rice (approx. 1 cup cooked / 180g):**\n    *   **Calories:** 200 - 250 kcal\n    *   **Protein:** 4 - 5 g\n    *   **Carbohydrates:** 45 - 50 g\n    *   **Fats:** 0 - 1 g\n*   **Naan Bread (approx. 2 medium pieces / 180g):**\n    *   **Calories:** 280 - 380 kcal\n    *   **Protein:** 9 - 12 g\n    *   **Carbohydrates:** 55 - 70 g\n    *   **Fats:** 6 - 10 g\n\n**Total Estimated Nutrition for the Entire Pictured Meal:**\n\n*   **Total Calories:** **~1080 - 1380 kcal**\n*   **Total Protein:** **~48 - 62 g**\n*   **Total Carbohydrates:** **~125 - 155 g**\n*   **Total Fats:** **~46 - 66 g**\n\n---\n\n### Personalized Nutrition Advice for Aarya (18, Male, Weight Loss Goal, Low Activity Level)\n\nAarya, given your goal of weight loss and low activity level, it's crucial to focus on creating a calorie deficit while ensuring you get adequate nutrients. The meal pictured, while delicious, is quite calorie-dense and might be too much for a single sitting if weight loss is the primary goal, especially with a low activity level.\n\nHere\u2019s some personalized advice to help you achieve your weight loss goal:\n\n#### 1. Caloric Intake and Macronutrient Focus:\n\n*   **Calorie Deficit:** To lose weight, you need to consume fewer calories than your body burns. For an 18-year-old male with low activity, a healthy target might be around **1800-2200 kcal per day**, depending on your current weight and specific metabolism. Aim for a deficit of 300-500 calories from your maintenance level. The meal above alone could be more than half of your daily calorie target.\n*   **Protein Priority:** Focus on increasing your protein intake. Protein is essential for satiety (feeling full) and preserving muscle mass during weight loss. Aim for **1.2-1.6g of protein per kg of your target body weight**.\n*   **Complex Carbohydrates:** Prioritize complex carbohydrates from whole grains, fruits, and vegetables over refined carbs.\n*   **Healthy Fats:** Include healthy fats in moderation, as they are essential for hormone production and nutrient absorption.\n\n#### 2. Specific Recommendations for Indian Cuisine (and meals like the one pictured):\n\n*   **Portion Control is Key:** Indian meals, especially restaurant portions, can be very large and calorie-dense.\n    *   **Curries:** Opt for leaner protein sources like chicken breast (Tandoori Chicken is a good option) or fish. If having creamy curries like Butter Chicken, aim for a smaller portion (e.g., half of what's shown) and ask for less cream/butter if possible. Lentil (Dal) or vegetable curries are often lighter choices.\n    *   **Grains:** Reduce your rice portion. Instead of a full cup, consider half a cup or replace it with a larger portion of vegetables. Brown rice is a better option than white rice due to higher fiber content.\n    *   **Bread:** Naan is high in calories and refined carbs. Swap it for whole wheat Roti or Chapati, and limit yourself to one piece.\n*   **Increase Vegetables and Fiber:** Fill half your plate with non-starchy vegetables (e.g., salad, saut\u00e9ed greens, vegetable subzi). Fiber helps you feel full, aids digestion, and is generally low in calories.\n*   **Choose Wisely:** When ordering or preparing Indian food:\n    *   **Avoid Fried Items:** Limit pakoras, samosas, and other deep-fried appetizers.\n    *   **Watch for Hidden Fats:** Many dishes use a lot of ghee (clarified butter) or oil. Ask for less or opt for tandoor-cooked items.\n    *   **Limit Sugary Drinks:** Indian sweets and sugary beverages add empty calories.\n\n#### 3. General Lifestyle and Nutrition Tips:\n\n*   **Hydration:** Drink plenty of water throughout the day. It can help with satiety and overall bodily functions.\n*   **Mindful Eating:** Eat slowly, savor your food, and pay attention to your body's hunger and fullness cues. Avoid distractions like screens while eating.\n*   **Meal Timing:** Aim for regular meal times and avoid skipping meals, which can lead to overeating later.\n*   **Snacks:** If you need snacks, choose healthy options like fruit, nuts (in moderation), yogurt, or vegetable sticks.\n*   **Limit Processed Foods & Sugars:** These often contain empty calories, unhealthy fats, and added sugars that hinder weight loss.\n\n#### 4. Incorporate Physical Activity:\n\n*   Even with a \"low\" activity level, starting small can make a big difference. Aim for a 30-minute brisk walk daily, or incorporate bodyweight exercises a few times a week. Gradually increase intensity and duration as you get fitter.\n\n#### 5. Seek Professional Guidance:\n\n*   Consider consulting a registered dietitian or a nutritionist. They can provide a personalized meal plan tailored to your specific needs, preferences, and health conditions, ensuring safe and effective weight loss.\n\nBy making conscious choices about your food and incorporating some physical activity, Aarya, you can effectively work towards your weight loss goal.",
+        "timestamp": "2026-05-26 15:50:05"
+    },
+    {
+        "type": "BMI",
+        "weight": 60.0,
+        "height": 1.5,
+        "bmi": 26.67,
+        "category": "Overweight",
+        "date": "2026-05-28 03:45:36",
+        "timestamp": "2026-05-28 03:45:36"
+    },
+    {
+        "type": "BMI",
+        "weight": 1.0,
+        "height": 0.5,
+        "bmi": 4.0,
+        "category": "Underweight",
+        "date": "2026-05-28 04:02:51",
+        "timestamp": "2026-05-28 04:02:51"
+    },
+    {
+        "type": "BMI",
+        "weight": 78.0,
+        "height": 0.5,
+        "bmi": 312.0,
+        "category": "Obese",
+        "date": "2026-06-01 20:47:19",
+        "timestamp": "2026-06-01 20:47:19"
+    },
+    {
+        "type": "BMI",
+        "weight": 78.0,
+        "height": 1.6,
+        "bmi": 30.47,
+        "category": "Obese",
+        "date": "2026-06-01 20:47:30",
+        "timestamp": "2026-06-01 20:47:30"
+    },
+    {
+        "type": "BMI",
+        "weight": 59.0,
+        "height": 1.58,
+        "bmi": 23.63,
+        "category": "Normal Weight",
+        "date": "2026-06-05 16:36:10",
+        "timestamp": "2026-06-05 16:36:10"
+    },
+    {
+        "type": "BMI",
+        "weight": 59.0,
+        "height": 2.0,
+        "bmi": 14.75,
+        "category": "Underweight",
+        "date": "2026-06-05 16:36:23",
+        "timestamp": "2026-06-05 16:36:23"
+    },
+    {
+        "type": "Food Scan",
+        "result": "Hello Aarya,\n\nBased on the image provided, here's an analysis of your meal, along with estimated nutritional values. Please remember that these are estimates, as exact recipes and portion sizes can vary significantly.\n\n### Identified Food Items:\n\nThis meal appears to be a classic Indian combination, typically served as a main course:\n\n1.  **Chicken Curry:** A creamy, rich chicken curry, likely Butter Chicken (Murgh Makhani) or Chicken Tikka Masala, garnished with fresh cilantro.\n2.  **Basmati Rice:** A portion of plain white basmati rice.\n3.  **Naan Bread:** Two pieces of fluffy, leavened flatbread.\n\n### Estimated Nutritional Breakdown:\n\nHere's an estimation for the quantities shown, assuming a standard serving size for each component in a restaurant setting:\n\n**1. Chicken Curry (approx. 1.5 cups / 350-400g)**\n*   **Calories:** 550 - 750 kcal\n*   **Protein:** 35 - 45g\n*   **Carbohydrates:** 25 - 40g\n*   **Fats:** 35 - 55g\n\n**2. Basmati Rice (approx. 0.75 cups cooked / 120-150g)**\n*   **Calories:** 150 - 180 kcal\n*   **Protein:** 3 - 4g\n*   **Carbohydrates:** 30 - 40g\n*   **Fats:** 0 - 1g\n\n**3. Naan Bread (2 medium pieces / 120-160g)**\n*   **Calories:** 300 - 400 kcal\n*   **Protein:** 10 - 15g\n*   **Carbohydrates:** 60 - 80g\n*   **Fats:** 8 - 15g\n\n---\n\n### Total Estimated Nutritional Values for this Entire Meal:\n\n*   **Total Calories:** **1000 - 1330 kcal**\n*   **Total Protein:** **48 - 64g**\n*   **Total Carbohydrates:** **115 - 160g**\n*   **Total Fats:** **43 - 71g**\n\n---\n\n### Important Note for Aarya (Weight Loss Goal, Low Activity):\n\nGiven your goal of **weight loss** and **low activity level**, this meal, consumed as a single serving, is quite high in calories, fats, and carbohydrates.\n\n*   **High Calorie Count:** A single meal with over 1000 calories can make it challenging to stay within a daily calorie deficit required for weight loss, especially with low activity.\n*   **High Fat Content:** The creamy chicken curry and naan contribute significantly to the fat content, which is calorie-dense.\n*   **High Carb Content:** The rice and naan combined provide a substantial amount of carbohydrates.\n\n**Recommendations for Weight Loss:**\n\n*   **Portion Control:** If you consume such a meal, consider having a much smaller portion of the curry, significantly reducing or skipping the rice, and having only one small piece of naan (or opting for a healthier whole-wheat roti instead).\n*   **Choose Leaner Options:** Look for drier chicken preparations like Chicken Tikka (without a creamy sauce), tandoori chicken, or lentil-based dishes (dal) with minimal added oil/ghee.\n*   **Increase Vegetables:** Pair your meal with a large serving of salad or a vegetable dish cooked with minimal oil.\n*   **Hydration:** Drink plenty of water throughout the day.\n*   **Increase Activity:** Even light activities like daily walks can help increase your calorie expenditure and support your weight loss goal.\n\nPlease consult with a dietitian or nutritionist for personalized dietary advice tailored to your specific needs and health goals.",
+        "timestamp": "2026-06-05 21:43:27"
+    }
+]

@@ -1,0 +1,23 @@
+[
+    {
+        "timestamp": "2026-05-24 02:46:59.549455",
+        "goal": "Fat Loss",
+        "diet_type": "Vegetarian",
+        "budget": 50,
+        "meal_plan": "Error: name 'model' is not defined"
+    },
+    {
+        "timestamp": "2026-05-24 03:00:54.979424",
+        "goal": "Fat Loss",
+        "diet_type": "Eggetarian",
+        "budget": 30,
+        "meal_plan": "Here is your personalized Indian meal plan:\n\n| Meal          | Dish                                               | Calories (Approx) | Protein Sources           | Time of Day |\n| :------------ | :------------------------------------------------- | :---------------- | :------------------------ | :---------- |\n| **Breakfast** | Poha (1 cup cooked) with 1 Boiled Egg              | 300               | Egg, Poha (peas/groundnuts) | 8:00 AM     |\n| **Snack**     | Sprouted Moong Salad (1 small bowl with onion/tomato) | 120               | Moong (lentil sprouts)    | 11:00 AM    |\n| **Lunch**     | Dal (1.5 cups) with 2 Rotis and Cabbage Sabzi (1 cup) | 500               | Dal (Lentils), Atta, Cabbage | 1:30 PM     |\n| **Dinner**    | Plain Dal Khichdi (1.5 cups cooked) with Curd (1/2 cup) | 480               | Dal (Lentils), Rice, Curd | 8:00 PM     |"
+    },
+    {
+        "timestamp": "2026-05-25 11:07:55.603350",
+        "goal": "Muscle Gain",
+        "diet_type": "Eggetarian",
+        "budget": 50,
+        "meal_plan": "Here is a personalized Indian meal plan:\n\n| Meal      | Dish                                           | Calories (Approx.) | Protein Sources                | Time of Day          |\n| :-------- | :--------------------------------------------- | :----------------- | :----------------------------- | :------------------- |\n| Breakfast | Poha (1.5 cups, large) with chopped onion      | 350                | Flattened Rice (minimal)       | 7:30 AM - 8:30 AM    |\n| Lunch     | Dal Fry (1.5 cups) + Rice (2.5 cups)           | 625                | Lentils (Dal), Rice            | 1:00 PM - 2:00 PM    |\n| Snack     | 1 Boiled Egg + Roasted Peanuts (50g)           | 355                | Egg, Peanuts                   | 5:00 PM - 6:00 PM    |\n| Dinner    | Dal Tadka (1.25 cups) + 2 Wheat Roti           | 400                | Lentils (Dal), Wheat           | 8:30 PM - 9:30 PM    |"
+    }
+]

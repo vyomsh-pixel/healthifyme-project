@@ -1,0 +1,10 @@
+[
+    {
+        "role": "user",
+        "content": "hi"
+    },
+    {
+        "role": "assistant",
+        "content": "Hi Aarya! Glad to connect.\n\nI see you're aiming for weight loss, and your recent BMI is 31.25. Let's get started with some simple steps.\n\nTo begin, try replacing sugary drinks with water. Also, consider adding a short 15-minute walk to your day to gradually boost your activity."
+    }
+]
