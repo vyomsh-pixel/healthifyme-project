@@ -300,7 +300,7 @@ def save_checkin(payload: CheckinRequest, current_user: CurrentUser) -> dict[str
 def analyze_food(payload: ImageUploadRequest, current_user: CurrentUser) -> dict[str, Any]:
     result = analyze_food_image(payload.image)
     if not result:
-        raise HTTPException(status_code=500, detail="Failed to analyze image with AI.")
+        raise HTTPException(status_code=400, detail="We couldn't analyze that photo. Please try a clearer one or enter the values manually.")
     return result
 
 
@@ -308,5 +308,5 @@ def analyze_food(payload: ImageUploadRequest, current_user: CurrentUser) -> dict
 def analyze_skin(payload: ImageUploadRequest, current_user: CurrentUser) -> dict[str, Any]:
     result = analyze_skin_image(payload.image)
     if not result:
-        raise HTTPException(status_code=500, detail="Failed to analyze image with AI.")
+        raise HTTPException(status_code=400, detail="We couldn't analyze that photo. Please try a clearer one or log your observations manually.")
     return result
