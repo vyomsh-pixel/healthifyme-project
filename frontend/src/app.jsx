@@ -1,27 +1,49 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Sidebar from "./components/Sidebar";
-import Dashboard from "./pages/Dashboard";
-import ComingSoon from "./pages/ComingSoon";
+import { useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Sidebar from "./components/sidebar";
+import Dashboard from "./pages/dashboard";
+import AuthPage from "./pages/AuthPage";
+import {
+  BMIPage, FoodPage, SkinPage, MealPlannerPage, WorkoutPage,
+  AnalyticsPage, HistoryPage, ProfilePage, CheckinPage, ChatPage,
+} from "./pages/HealthPages";
+import { getSession, signOut } from "./lib/api";
+
+function AppShell({ session, onSignOut }) {
+  return (
+    <div className="min-h-screen bg-[var(--bg)]">
+      <Sidebar username={session.user.display_name} onSignOut={onSignOut} />
+      <main className="app-main">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/check-in" element={<CheckinPage />} />
+          <Route path="/bmi" element={<BMIPage />} />
+          <Route path="/food-scanner" element={<FoodPage />} />
+          <Route path="/skin-scan" element={<SkinPage />} />
+          <Route path="/meal-planner" element={<MealPlannerPage />} />
+          <Route path="/workout-planner" element={<WorkoutPage />} />
+          <Route path="/workout-analytics" element={<AnalyticsPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/assistant" element={<ChatPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 export default function App() {
+  const [session, setSession] = useState(getSession);
+
+  async function handleSignOut() {
+    await signOut();
+    setSession(null);
+  }
+
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-[var(--bg)]">
-        <Sidebar />
-        <main className="ml-[240px] min-h-screen">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/bmi" element={<ComingSoon title="BMI" />} />
-            <Route path="/food-scanner" element={<ComingSoon title="Food Scanner" />} />
-            <Route path="/skin-scan" element={<ComingSoon title="Skin Scan" />} />
-            <Route path="/meal-planner" element={<ComingSoon title="Meal Planner" />} />
-            <Route path="/workout-planner" element={<ComingSoon title="Workout Planner" />} />
-            <Route path="/workout-analytics" element={<ComingSoon title="Workout Analytics" />} />
-            <Route path="/history" element={<ComingSoon title="History" />} />
-            <Route path="/profile" element={<ComingSoon title="Profile" />} />
-          </Routes>
-        </main>
-      </div>
+      {session ? <AppShell session={session} onSignOut={handleSignOut} /> : <AuthPage onAuthenticated={setSession} />}
     </BrowserRouter>
   );
 }

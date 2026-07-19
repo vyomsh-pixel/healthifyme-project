@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: "home" },
+  { to: "/check-in", label: "Daily check-in", icon: "check" },
   { to: "/bmi", label: "BMI", icon: "ruler" },
   { to: "/food-scanner", label: "Food Scanner", icon: "scan" },
   { to: "/skin-scan", label: "Skin Scan", icon: "droplet" },
@@ -10,6 +11,7 @@ const NAV_ITEMS = [
   { to: "/workout-analytics", label: "Analytics", icon: "chart" },
   { to: "/history", label: "History", icon: "clock" },
   { to: "/profile", label: "Profile", icon: "user" },
+  { to: "/assistant", label: "AI assistant", icon: "chat" },
 ];
 
 function Icon({ name, className }) {
@@ -23,6 +25,8 @@ function Icon({ name, className }) {
     chart: "M4 20V10M10 20V4M16 20v-8M22 20H2",
     clock: "M12 7v5l3 3M12 21a9 9 0 100-18 9 9 0 000 18z",
     user: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-7 8-7s8 3 8 7",
+    check: "M5 12l4 4L19 6",
+    chat: "M21 11.5a8.4 8.4 0 01-9 8.5 9.5 9.5 0 01-4-.9L3 21l1.5-4A8.4 8.4 0 013 11.5a9 9 0 0118 0z",
   };
   return (
     <svg
@@ -39,9 +43,9 @@ function Icon({ name, className }) {
   );
 }
 
-export default function Sidebar({ username = "Aarya" }) {
+export default function Sidebar({ username = "Member", onSignOut }) {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[240px] flex flex-col border-r border-[var(--border)] bg-[var(--surface)]">
+    <aside className="app-sidebar fixed left-0 top-0 h-screen w-[240px] flex flex-col border-r border-[var(--border)] bg-[var(--surface)]">
       <div className="px-6 pt-7 pb-6">
         <div className="flex items-baseline gap-1.5">
           <span className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
@@ -89,6 +93,7 @@ export default function Sidebar({ username = "Aarya" }) {
             </p>
           </div>
         </div>
+        <button className="sidebar-signout" onClick={onSignOut}>Sign out</button>
       </div>
     </aside>
   );

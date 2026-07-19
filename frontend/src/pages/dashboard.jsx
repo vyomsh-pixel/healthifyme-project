@@ -1,203 +1,45 @@
 import { useEffect, useState } from "react";
-import { getDashboard } from "../lib/api";
+import { Link } from "react-router-dom";
 import HealthScoreMark from "../components/HealthScoreMark";
 import StatCard from "../components/StatCard";
+import { request } from "../lib/api";
 
-const TYPE_META = {
-  BMI: { label: "BMI Check", color: "var(--accent)" },
-  "Food Scan": { label: "Food Scan", color: "var(--success)" },
-  "Skin Scan": { label: "Skin Scan", color: "var(--warning)" },
-};
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center text-center py-24 border border-dashed border-[var(--border-strong)] rounded-2xl">
-      <p className="font-display text-2xl text-[var(--text-primary)] mb-2">
-        Nothing logged yet
-      </p>
-      <p className="text-[var(--text-secondary)] text-sm max-w-sm">
-        Run a BMI check, scan a meal, or log a skin photo — your dashboard
-        fills in as soon as you do.
-      </p>
-    </div>
-  );
-}
-
-function SectionLabel({ children }) {
-  return (
-    <p className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)] mb-3">
-      {children}
-    </p>
-  );
-}
-
-function truncate(text, n = 220) {
-  if (!text) return "";
-  return text.length > n ? text.slice(0, n).trim() + "…" : text;
-}
+const ACTIVITY_LABELS = { BMI: "BMI check", FOOD: "Food log", SKIN: "Skin note", MEAL_PLAN: "Meal plan", WORKOUT: "Workout completed" };
+const formatDate = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${value}Z`)) : "Not yet";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
+  const reload = () => request("/dashboard").then(setData).catch((err) => setError(err.message));
+  useEffect(() => { reload(); }, []);
 
-  useEffect(() => {
-    getDashboard()
-      .then(setData)
-      .catch((err) => setError(err.message));
-  }, []);
+  if (error) return <Page><h1>Dashboard</h1><div className="notice error">{error} <button onClick={() => { setError(""); reload(); }}>Try again</button></div></Page>;
+  if (!data) return <Page><p className="loading">Loading your private dashboard…</p></Page>;
+  const { latest, today_nutrition: nutrition, counts } = data;
+  const caloriePercent = Math.min(100, Math.round((nutrition.calories / nutrition.calorie_goal) * 100));
+  const proteinPercent = Math.min(100, Math.round((nutrition.protein_g / nutrition.protein_goal) * 100));
 
-  if (error) {
-    return (
-      <div className="p-10">
-        <p className="text-[var(--danger)] font-mono text-sm">
-          Couldn't reach the API — is the backend running on :8000? ({error})
-        </p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="p-10">
-        <p className="text-[var(--text-tertiary)] font-mono text-sm">
-          Loading…
-        </p>
-      </div>
-    );
-  }
-
-  if (!data.has_data) {
-    return (
-      <div className="max-w-5xl mx-auto px-10 py-12">
-        <Header />
-        <EmptyState />
-      </div>
-    );
-  }
-
-  const { counts, health_score, latest_bmi, latest_food, latest_skin, latest_meal, recent_activity } = data;
-
-  return (
-    <div className="max-w-6xl mx-auto px-10 py-12">
-      <Header />
-
-      <div className="grid grid-cols-[auto_1fr] gap-8 mb-12 items-start">
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-8 py-7">
-          <SectionLabel>Health Score</SectionLabel>
-          <HealthScoreMark score={health_score} />
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 self-stretch">
-          <StatCard label="BMI Records" value={counts.bmi_records} />
-          <StatCard label="Food Scans" value={counts.food_scans} />
-          <StatCard label="Skin Scans" value={counts.skin_scans} />
-          <StatCard label="Meal Plans" value={counts.meal_plans} accent />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-6 py-5">
-          <SectionLabel>Latest BMI</SectionLabel>
-          {latest_bmi ? (
-            <div className="flex items-end justify-between">
-              <div>
-                <span className="font-display text-4xl font-semibold text-[var(--text-primary)]">
-                  {latest_bmi.bmi}
-                </span>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">
-                  {latest_bmi.category}
-                </p>
-              </div>
-              <p className="font-mono text-[11px] text-[var(--text-tertiary)]">
-                {latest_bmi.timestamp}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--text-tertiary)]">No BMI records yet.</p>
-          )}
-        </div>
-
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-6 py-5">
-          <SectionLabel>Latest Meal Plan</SectionLabel>
-          {latest_meal ? (
-            <div>
-              <div className="flex gap-4 text-sm mb-2">
-                <span className="text-[var(--text-secondary)]">
-                  Goal: <span className="text-[var(--text-primary)] font-medium">{latest_meal.goal}</span>
-                </span>
-                <span className="text-[var(--text-secondary)]">
-                  Diet: <span className="text-[var(--text-primary)] font-medium">{latest_meal.diet_type}</span>
-                </span>
-              </div>
-              <p className="font-mono text-xs text-[var(--text-tertiary)]">
-                Budget ₹{latest_meal.budget}/day
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--text-tertiary)]">No meal plans generated yet.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-6 py-5">
-          <SectionLabel>Latest Food Scan</SectionLabel>
-          {latest_food ? (
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              {truncate(latest_food.result)}
-            </p>
-          ) : (
-            <p className="text-sm text-[var(--text-tertiary)]">No food scans yet.</p>
-          )}
-        </div>
-
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-6 py-5">
-          <SectionLabel>Latest Skin Scan</SectionLabel>
-          {latest_skin ? (
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              {truncate(latest_skin.result)}
-            </p>
-          ) : (
-            <p className="text-sm text-[var(--text-tertiary)]">No skin scans yet.</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <SectionLabel>Recent Activity</SectionLabel>
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl divide-y divide-[var(--border)]">
-          {recent_activity.map((item, i) => {
-            const meta = TYPE_META[item.type] || { label: item.type, color: "var(--text-tertiary)" };
-            return (
-              <div key={i} className="flex items-center gap-4 px-6 py-3.5">
-                <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: meta.color }}
-                />
-                <span className="text-sm font-medium text-[var(--text-primary)] flex-1">
-                  {meta.label}
-                </span>
-                <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
-                  {item.timestamp}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+  return <Page>
+    <header className="page-header"><p className="eyebrow">YOUR WELLNESS OVERVIEW</p><h1>Hi, {data.user.display_name.split(" ")[0]}.</h1><p>Small, consistent actions are the point—not a perfect score.</p></header>
+    <div className="dashboard-top">
+      <section className="score-card"><p className="label">WELLNESS CONSISTENCY</p><HealthScoreMark score={data.health_score} /><p className="score-note">Based on profile completion, recent food logs, completed workouts, meal plans, and your latest BMI. It is not a medical score.</p></section>
+      <section className="quick-actions"><p className="label">TODAY’S STARTING POINT</p><h2>{data.profile.goal ? `Build toward ${data.profile.goal}` : "Set a goal to personalize Health.io"}</h2><p>Log one thing now. That is enough to keep your trend moving.</p><div className="action-row"><Link className="button primary" to="/check-in">Check in</Link><Link className="button secondary" to="/food-scanner">Log food</Link></div></section>
     </div>
-  );
+    <section className="stat-grid">
+      <StatCard label="BMI records" value={counts.bmi_records} />
+      <StatCard label="Food logs" value={counts.food_logs} />
+      <StatCard label="Completed workouts" value={counts.completed_workouts} />
+      <StatCard label="Meal plans" value={counts.meal_plans} accent />
+    </section>
+    <section className="two-column">
+      <article className="panel"><p className="label">TODAY’S NUTRITION</p><h2>{nutrition.calories} <span>of {nutrition.calorie_goal} kcal</span></h2><Progress value={caloriePercent} label="Calories" /><h2>{nutrition.protein_g}g <span>of {nutrition.protein_goal}g protein</span></h2><Progress value={proteinPercent} label="Protein" /><p className="muted">Food values are estimates; serving size makes a big difference.</p></article>
+      <article className="panel"><p className="label">LATEST BMI</p>{latest.bmi ? <><h2>{latest.bmi.bmi} <span>{latest.bmi.category}</span></h2><p>{latest.bmi.guidance}</p><p className="muted">Recorded {formatDate(latest.bmi.created_at)}</p></> : <Empty text="Add a BMI check to see your trend." to="/bmi" action="Calculate BMI" />}</article>
+      <article className="panel"><p className="label">LATEST MEAL PLAN</p>{latest.meal ? <><h2>{latest.meal.goal}</h2><p>{latest.meal.diet_type} · {latest.meal.meals_per_day} meals/day</p><Link className="text-link" to="/meal-planner">Open meal planner →</Link></> : <Empty text="Create a practical plan around your food preferences." to="/meal-planner" action="Plan meals" />}</article>
+      <article className="panel"><p className="label">RECENT ACTIVITY</p>{data.recent_activity.length ? <ul className="activity-list">{data.recent_activity.map((item) => <li key={`${item.type}-${item.id}`}><span className="activity-dot" /><span>{ACTIVITY_LABELS[item.type] || item.type}</span><time>{formatDate(item.created_at)}</time></li>)}</ul> : <Empty text="Your activities will appear here." to="/check-in" action="Start check-in" />}</article>
+    </section>
+  </Page>;
 }
 
-function Header() {
-  return (
-    <div className="mb-10 pb-6 border-b border-[var(--border)]">
-      <h1 className="font-display text-4xl font-semibold tracking-tight text-[var(--text-primary)]">
-        Dashboard
-      </h1>
-      <p className="text-[var(--text-secondary)] text-sm mt-1.5">
-        Your health overview, logged and quantified.
-      </p>
-    </div>
-  );
-}
+export function Page({ children }) { return <div className="page-wrap">{children}</div>; }
+function Progress({ value, label }) { return <div className="progress-block"><div><span>{label}</span><b>{value}%</b></div><div className="progress-track"><i style={{ width: `${value}%` }} /></div></div>; }
+function Empty({ text, to, action }) { return <div className="empty"><p>{text}</p><Link className="text-link" to={to}>{action} →</Link></div>; }
