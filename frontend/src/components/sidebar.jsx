@@ -45,7 +45,7 @@ function Icon({ name, className }) {
 
 export default function Sidebar({ username = "Member", onSignOut }) {
   return (
-    <aside className="app-sidebar fixed left-0 top-0 h-screen w-[240px] flex flex-col border-r border-[var(--border)] bg-[var(--surface)]">
+    <aside className="app-sidebar fixed left-0 top-0 h-screen w-[240px] flex flex-col">
       <div className="px-6 pt-7 pb-6">
         <div className="flex items-baseline gap-1.5">
           <span className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">

@@ -16,11 +16,44 @@ export default function Dashboard() {
   if (error) return <Page><h1>Dashboard</h1><div className="notice error">{error} <button onClick={() => { setError(""); reload(); }}>Try again</button></div></Page>;
   if (!data) return <Page><p className="loading">Loading your private dashboard…</p></Page>;
   const { latest, today_nutrition: nutrition, counts } = data;
+  
   const caloriePercent = Math.min(100, Math.round((nutrition.calories / nutrition.calorie_goal) * 100));
   const proteinPercent = Math.min(100, Math.round((nutrition.protein_g / nutrition.protein_goal) * 100));
 
+  // Determine status by distance from optimal
+  const getCalorieStatus = (percent) => {
+    if (percent >= 90 && percent <= 110) return { color: "green", label: "Optimal" };
+    if (percent >= 75 && percent <= 125) return { color: "amber", label: "Acceptable" };
+    return { color: "red", label: "Off Target" };
+  };
+  
+  const getProteinStatus = (percent) => {
+    if (percent >= 90) return { color: "green", label: "Optimal" };
+    if (percent >= 70) return { color: "amber", label: "Low" };
+    return { color: "red", label: "Very Low" };
+  };
+
+  const getBMIStatus = (category) => {
+    if (!category) return null;
+    const cat = category.toLowerCase();
+    if (cat.includes("normal")) return { color: "green", label: "Optimal" };
+    if (cat.includes("overweight") || cat.includes("underweight")) return { color: "amber", label: "Moderate" };
+    return { color: "red", label: "High Risk" };
+  };
+
+  const calStatus = getCalorieStatus(Math.round((nutrition.calories / nutrition.calorie_goal) * 100));
+  const proStatus = getProteinStatus(Math.round((nutrition.protein_g / nutrition.protein_goal) * 100));
+  const bmiStatus = getBMIStatus(latest.bmi?.category);
+
   return <Page>
-    <header className="page-header"><p className="eyebrow">YOUR WELLNESS OVERVIEW</p><h1>Hi, {data.user.display_name.split(" ")[0]}.</h1><p>Small, consistent actions are the point—not a perfect score.</p></header>
+    <header className="page-header" style={{ borderBottom: "none", marginBottom: "1.5rem" }}>
+      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>YOUR WELLNESS OVERVIEW</p>
+      <h1 style={{ fontSize: "clamp(3rem, 6vw, 4.5rem)", lineHeight: 0.95, letterSpacing: "-0.04em", fontWeight: 800, margin: "0" }}>
+        Hi, {data.user.display_name.split(" ")[0]}.<br/>
+        Let's build toward <span style={{ color: "var(--status-green)" }}>{(data.profile.goal || "fitness").toLowerCase()}</span>.
+      </h1>
+      <p className="muted" style={{ marginTop: "1.25rem", fontSize: "1.1rem" }}>Small, consistent actions are the point—not a perfect score.</p>
+    </header>
     <div className="dashboard-top">
       <section className="score-card"><p className="label">WELLNESS CONSISTENCY</p><HealthScoreMark score={data.health_score} /><p className="score-note">Based on profile completion, recent food logs, completed workouts, meal plans, and your latest BMI. It is not a medical score.</p></section>
       <section className="quick-actions"><p className="label">TODAY’S STARTING POINT</p><h2>{data.profile.goal ? `Build toward ${data.profile.goal}` : "Set a goal to personalize Health.io"}</h2><p>Log one thing now. That is enough to keep your trend moving.</p><div className="action-row"><Link className="button primary" to="/check-in">Check in</Link><Link className="button secondary" to="/food-scanner">Log food</Link></div></section>
@@ -32,8 +65,8 @@ export default function Dashboard() {
       <StatCard label="Meal plans" value={counts.meal_plans} accent />
     </section>
     <section className="two-column">
-      <article className="panel"><p className="label">TODAY’S NUTRITION</p><h2>{nutrition.calories} <span>of {nutrition.calorie_goal} kcal</span></h2><Progress value={caloriePercent} label="Calories" /><h2>{nutrition.protein_g}g <span>of {nutrition.protein_goal}g protein</span></h2><Progress value={proteinPercent} label="Protein" /><p className="muted">Food values are estimates; serving size makes a big difference.</p></article>
-      <article className="panel"><p className="label">LATEST BMI</p>{latest.bmi ? <><h2>{latest.bmi.bmi} <span>{latest.bmi.category}</span></h2><p>{latest.bmi.guidance}</p><p className="muted">Recorded {formatDate(latest.bmi.created_at)}</p></> : <Empty text="Add a BMI check to see your trend." to="/bmi" action="Calculate BMI" />}</article>
+      <article className="panel"><p className="label">TODAY’S NUTRITION</p><h2>{nutrition.calories} <span>of {nutrition.calorie_goal} kcal</span></h2><Progress value={caloriePercent} label="Calories" status={calStatus} /><h2>{nutrition.protein_g}g <span>of {nutrition.protein_goal}g protein</span></h2><Progress value={proteinPercent} label="Protein" status={proStatus} /><p className="muted">Food values are estimates; serving size makes a big difference.</p></article>
+      <article className="panel"><p className="label">LATEST BMI</p>{latest.bmi ? <><h2>{latest.bmi.bmi} <span>{latest.bmi.category}</span></h2>{bmiStatus && <span className={`metric-card-status status-${bmiStatus.color}`}>● {bmiStatus.label}</span>}<p style={{marginTop: "0.75rem"}}>{latest.bmi.guidance}</p><p className="muted">Recorded {formatDate(latest.bmi.created_at)}</p></> : <Empty text="Add a BMI check to see your trend." to="/bmi" action="Calculate BMI" />}</article>
       <article className="panel"><p className="label">LATEST MEAL PLAN</p>{latest.meal ? <><h2>{latest.meal.goal}</h2><p>{latest.meal.diet_type} · {latest.meal.meals_per_day} meals/day</p><Link className="text-link" to="/meal-planner">Open meal planner →</Link></> : <Empty text="Create a practical plan around your food preferences." to="/meal-planner" action="Plan meals" />}</article>
       <article className="panel"><p className="label">RECENT ACTIVITY</p>{data.recent_activity.length ? <ul className="activity-list">{data.recent_activity.map((item) => <li key={`${item.type}-${item.id}`}><span className="activity-dot" /><span>{ACTIVITY_LABELS[item.type] || item.type}</span><time>{formatDate(item.created_at)}</time></li>)}</ul> : <Empty text="Your activities will appear here." to="/check-in" action="Start check-in" />}</article>
     </section>
@@ -41,5 +74,5 @@ export default function Dashboard() {
 }
 
 export function Page({ children }) { return <div className="page-wrap">{children}</div>; }
-function Progress({ value, label }) { return <div className="progress-block"><div><span>{label}</span><b>{value}%</b></div><div className="progress-track"><i style={{ width: `${value}%` }} /></div></div>; }
+function Progress({ value, label, status }) { return <div className="progress-block"><div><span>{label}</span><div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>{status && <span className={`metric-card-status status-${status.color}`}>● {status.label}</span>}<b>{value}%</b></div></div><div className="progress-track"><i style={{ width: `${value}%`, background: status ? `var(--status-${status.color})` : undefined }} /></div></div>; }
 function Empty({ text, to, action }) { return <div className="empty"><p>{text}</p><Link className="text-link" to={to}>{action} →</Link></div>; }

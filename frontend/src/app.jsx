@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useLocation, BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Sidebar from "./components/sidebar";
 import Dashboard from "./pages/dashboard";
 import AuthPage from "./pages/AuthPage";
@@ -10,8 +10,16 @@ import {
 import { getSession, signOut } from "./lib/api";
 
 function AppShell({ session, onSignOut }) {
+  const location = useLocation();
+  
+  let bgImage = "url('/sky-field-bg.png')";
+  if (location.pathname === "/assistant") bgImage = "url('/ai-beach-bg.png')";
+  else if (location.pathname === "/workout-planner" || location.pathname === "/bmi") bgImage = "url('/fitness-mountain-bg.png')";
+  else if (location.pathname === "/meal-planner" || location.pathname === "/food-scanner") bgImage = "url('/nutrition-forest-bg.png')";
+  else if (location.pathname === "/history" || location.pathname === "/profile" || location.pathname === "/workout-analytics") bgImage = "url('/history-sunset-bg.png')";
+
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
+    <div className="app-global-bg min-h-screen" style={{ '--dynamic-bg': bgImage }}>
       <Sidebar username={session.user.display_name} onSignOut={onSignOut} />
       <main className="app-main">
         <Routes>

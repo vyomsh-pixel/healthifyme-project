@@ -30,8 +30,16 @@ export function CheckinPage() {
 
 export function BMIPage() {
   const [weight, setWeight] = useState(""); const [height, setHeight] = useState(""); const [record, setRecord] = useState(null); const [notice, setNotice] = useState(null); const [busy, setBusy] = useState(false);
+  const getBMIStatus = (category) => {
+    if (!category) return null;
+    const cat = category.toLowerCase();
+    if (cat.includes("normal")) return { color: "green", label: "Optimal" };
+    if (cat.includes("overweight") || cat.includes("underweight")) return { color: "amber", label: "Moderate" };
+    return { color: "red", label: "High Risk" };
+  };
   async function submit(e) { e.preventDefault(); setBusy(true); try { const data = await request("/records/bmi", { method: "POST", body: { weight_kg: Number(weight), height_cm: Number(height) } }); setRecord(data.record); setNotice({ type: "success", text: "BMI measurement saved to your private history." }); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
-  return <Page><Header eyebrow="BODY METRIC" title="BMI, with context." copy="BMI is a screening estimate, not a diagnosis or complete picture of health." /><div className="two-column"><form className="panel form-stack" onSubmit={submit}><NumberField label="Weight (kg)" value={weight} onChange={setWeight} min="20" max="400" step="0.1" /><NumberField label="Height (cm)" value={height} onChange={setHeight} min="80" max="250" step="0.1" /><Notice notice={notice} /><FormButton busy={busy}>Calculate and save</FormButton></form><section className="panel result-panel">{record ? <><p className="label">YOUR RESULT</p><div className="hero-number">{record.bmi}</div><h2>{record.category}</h2><p>{record.guidance}</p><p className="muted">Use changes over time and professional advice—not one number alone.</p></> : <EmptyMessage text="Enter height and weight to calculate your BMI." />}</section></div></Page>;
+  const bmiStatus = getBMIStatus(record?.category);
+  return <Page><Header eyebrow="BODY METRIC" title="BMI, with context." copy="BMI is a screening estimate, not a diagnosis or complete picture of health." /><div className="two-column"><form className="panel form-stack" onSubmit={submit}><NumberField label="Weight (kg)" value={weight} onChange={setWeight} min="20" max="400" step="0.1" /><NumberField label="Height (cm)" value={height} onChange={setHeight} min="80" max="250" step="0.1" /><Notice notice={notice} /><FormButton busy={busy}>Calculate and save</FormButton></form><section className="panel result-panel">{record ? <><p className="label">YOUR RESULT</p><div className="hero-number">{record.bmi}</div><h2 style={{display: "flex", alignItems: "center", gap: "0.5rem"}}>{record.category} {bmiStatus && <span className={`metric-card-status status-${bmiStatus.color}`}>● {bmiStatus.label}</span>}</h2><p>{record.guidance}</p><p className="muted">Use changes over time and professional advice—not one number alone.</p></> : <EmptyMessage text="Enter height and weight to calculate your BMI." />}</section></div></Page>;
 }
 
 export function FoodPage() {
@@ -75,7 +83,7 @@ export function AnalyticsPage() {
 
 export function HistoryPage() {
   const { data, loading, error, reload } = useLoad("/records", "records"); const [filter, setFilter] = useState("ALL"); const records = (data?.records || []).filter((record) => filter === "ALL" || record.type === filter);
-  return <Page><Header eyebrow="HEALTH HISTORY" title="Your private record." copy="Records are visible only to the signed-in account in this local setup." /><div className="filter-row">{["ALL", "BMI", "FOOD", "SKIN"].map((type) => <button className={filter === type ? "selected" : ""} onClick={() => setFilter(type)} key={type}>{type === "ALL" ? "All activity" : type}</button>)}</div>{error && <div className="notice error">{error}<button onClick={reload}>Try again</button></div>}{loading ? <p className="loading">Loading your history…</p> : <section className="panel table-list">{records.length ? records.map((record) => <HistoryItem record={record} key={`${record.type}-${record.id}`} />) : <EmptyMessage text="No records match this view yet." />}</section>}</Page>;
+  return <Page><Header eyebrow="HEALTH HISTORY" title="Your private record." copy="Records are visible only to the signed-in account in this local setup." /><div className="filter-row">{["ALL", "BMI", "FOOD", "SKIN"].map((type) => <button className={filter === type ? "selected" : ""} onClick={() => setFilter(type)} key={type}>{type === "ALL" ? "All activity" : type}</button>)}</div>{error && <div className="notice error">{error}<button onClick={reload}>Try again</button></div>}{loading ? <p className="loading">Loading your history…</p> : <div className="form-stack">{records.length ? records.map((record) => <HistoryItem record={record} key={`${record.type}-${record.id}`} />) : <EmptyMessage text="No records match this view yet." />}</div>}</Page>;
 }
 
 export function ProfilePage() {
@@ -91,16 +99,28 @@ export function ChatPage() {
   const { data, loading, error, reload } = useLoad("/chat", "chat"); const [message, setMessage] = useState(""); const [notice, setNotice] = useState(null); const [busy, setBusy] = useState(false);
   async function submit(e) { e.preventDefault(); if (!message.trim()) return; setBusy(true); try { await request("/chat", { method: "POST", body: { message } }); setMessage(""); reload(); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
   async function clear() { if (!window.confirm("Clear this chat history?")) return; await request("/chat", { method: "DELETE" }); reload(); }
-  return <Page><Header eyebrow="AI WELLNESS ASSISTANT" title="Ask, then act on one thing." copy="This assistant gives general wellness information. It does not diagnose, prescribe, or replace professional care." /><section className="panel chat-panel">{error && <Notice notice={{ type: "error", text: error }} />}{loading ? <p className="loading">Loading conversation…</p> : <div className="messages">{data?.messages?.length ? data.messages.map((item) => <article className={`message ${item.role}`} key={item.id}><b>{item.role === "user" ? "You" : "Health.io"}</b><p>{item.content}</p></article>) : <EmptyMessage text="Ask about a small fitness, nutrition, or routine goal." />}</div>}<form className="chat-form" onSubmit={submit}><textarea value={message} maxLength="1500" onChange={(e) => setMessage(e.target.value)} placeholder="Ask a general wellness question…" /><FormButton busy={busy}>Send</FormButton><button type="button" className="button secondary" onClick={clear}>Clear chat</button></form><Notice notice={notice} /></section></Page>;
+  return <Page><Header eyebrow="AI WELLNESS ASSISTANT" title="Ask, then act on one thing." copy="This assistant gives general wellness information. It does not diagnose, prescribe, or replace professional care." /><section className="panel chat-panel">{error && <Notice notice={{ type: "error", text: error }} />}{loading ? <p className="loading">Loading conversation…</p> : <div className="messages">{data?.messages?.length ? data.messages.map((item) => <article className={`message ${item.role}`} key={item.id}><b>{item.role === "user" ? "You" : "Health.io"}</b><MarkdownMessage content={item.content} /></article>) : <EmptyMessage text="Ask about a small fitness, nutrition, or routine goal." />}</div>}<form className="chat-form" onSubmit={submit}><textarea value={message} maxLength="1500" onChange={(e) => setMessage(e.target.value)} placeholder="Ask a general wellness question…" /><FormButton busy={busy}>Send</FormButton><button type="button" className="button secondary" onClick={clear}>Clear chat</button></form><Notice notice={notice} /></section></Page>;
 }
 
 function Header({ eyebrow, title, copy }) { return <header className="page-header"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{copy}</p></header>; }
+function MarkdownMessage({ content }) {
+  if (!content) return null;
+  const html = content
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;") // sanitize basic
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
+    .replace(/\*(.*?)\*/g, "<em>$1</em>") // italic
+    .replace(/^(?:-|\*)\s+(.*)/gm, "<li>$1</li>") // list items
+    .replace(/(<li>.*<\/li>(?:\n<li>.*<\/li>)*)/g, "<ul class='chat-list'>$1</ul>") // wrap in ul
+    .replace(/\n/g, "<br />"); // line breaks
+
+  return <div className="message-content" dangerouslySetInnerHTML={{ __html: html }} />;
+}
 function EmptyMessage({ text }) { return <p className="muted empty-message">{text}</p>; }
 function Select({ label, value, onChange, options }) { return <label>{label}<select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option} value={option}>{option || "Select"}</option>)}</select></label>; }
 function Scale({ label, value, onChange, hint }) { return <label>{label}<select required value={value} onChange={(e) => onChange(e.target.value)}><option value="">Choose</option>{[1,2,3,4,5].map((n) => <option key={n}>{n}</option>)}</select><small>{hint}</small></label>; }
 function Metric({ label, value }) { return <article className="metric-card"><p>{label}</p><strong>{value}</strong></article>; }
 function PlanCard({ plan }) { return <section className="panel plan-card">{plan ? <><p className="label">YOUR SAVED PLAN</p><h2>{plan.goal} · {plan.diet_type}</h2><PlanText text={plan.plan_text} /></> : <EmptyMessage text="Your generated plan will stay here and be saved in your history." />}</section>; }
 function PlanText({ text }) { return <div className="plan-text">{text.split("\n").map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line ? <p key={index}>{line.replace(/^- /, "• ")}</p> : <br key={index} />)}</div>; }
-function HistoryItem({ record }) { const title = record.type === "BMI" ? `BMI ${record.bmi} · ${record.category}` : record.type === "FOOD" ? record.food_name : record.concerns?.join(", ") || "Skin note"; return <article><div><b>{title}</b><span>{record.type === "FOOD" ? `${record.calories} kcal · ${record.protein_g}g protein` : record.summary || record.guidance || "Saved health record"}</span></div><time>{dateTime(record.created_at)}</time></article>; }
+function HistoryItem({ record }) { const title = record.type === "BMI" ? `BMI ${record.bmi} · ${record.category}` : record.type === "FOOD" ? record.food_name : record.concerns?.join(", ") || "Skin note"; return <article className="panel" style={{ display: "flex", justifyContent: "space-between", gap: "1.5rem", alignItems: "center" }}><div><h2 style={{margin: 0, fontSize: "1.2rem"}}>{title}</h2><span style={{opacity: 0.8, display: "block", marginTop: "0.25rem"}}>{record.type === "FOOD" ? `${record.calories} kcal · ${record.protein_g}g protein` : record.summary || record.guidance || "Saved health record"}</span></div><time style={{fontSize: "0.85rem", opacity: 0.7, whiteSpace: "nowrap"}}>{dateTime(record.created_at)}</time></article>; }
 function numbers(form, fields) { const result = { ...form }; fields.forEach((field) => { result[field] = Number(result[field]); }); return result; }
 function nullableNumbers(form, fields) { const result = { ...form }; fields.forEach((field) => { result[field] = result[field] === "" ? null : Number(result[field]); }); return result; }
