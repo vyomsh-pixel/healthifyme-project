@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8001/api";
+const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (isLocal ? "http://localhost:8001/api" : "https://healthifyme-project.onrender.com/api");
 const SESSION_KEY = "healthio-session";
 
 export function getSession() {
