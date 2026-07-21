@@ -300,12 +300,12 @@ def save_checkin(payload: CheckinRequest, current_user: CurrentUser) -> dict[str
 def analyze_food(payload: FoodAnalysisRequest, current_user: CurrentUser) -> dict[str, Any]:
     if payload.image:
         result = analyze_food_image(payload.image)
-        if not result:
+        if not result or not {"food_name", "calories", "protein_g", "carbs_g", "fat_g"}.issubset(result.keys()):
             raise HTTPException(status_code=400, detail="We couldn't analyze that photo. Please try a clearer one or enter the values manually.")
         return result
     elif payload.text:
         result = analyze_food_text(payload.text)
-        if not result:
+        if not result or not {"food_name", "calories", "protein_g", "carbs_g", "fat_g"}.issubset(result.keys()):
             raise HTTPException(status_code=400, detail="We couldn't analyze that text description. Please try being more specific or enter the values manually.")
         return result
     

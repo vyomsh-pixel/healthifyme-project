@@ -1,5 +1,5 @@
 import os
-import ast
+import json
 import random
 from typing import Any
 
@@ -184,7 +184,7 @@ def generate_ai_workout(goal: str, level: str, location: str, duration: int, res
         text = response.text.strip()
         text = text.replace("```python", "").replace("```json", "").replace("```", "").strip()
         
-        workout_list = ast.literal_eval(text)
+        workout_list = json.loads(text)
         
         # Dynamic duration and calorie system
         total_seconds = duration * 60
@@ -264,7 +264,7 @@ def analyze_food_text(text: str) -> dict[str, Any] | None:
         output = response.text.strip()
         output = output.replace("```json", "").replace("```python", "").replace("```", "").strip()
         
-        return ast.literal_eval(output)
+        return json.loads(output)
     except Exception as e:
         print(f"Gemini API Error (Food Text Analysis): {e}")
         return None
@@ -304,7 +304,7 @@ def analyze_food_image(base64_image: str) -> dict[str, Any] | None:
         
         text = response.text.strip()
         text = text.replace("```json", "").replace("```", "").strip()
-        return ast.literal_eval(text)
+        return json.loads(text)
         
     except Exception as e:
         print(f"Gemini API Error (Food Image): {e}")
@@ -343,7 +343,7 @@ def analyze_skin_image(base64_image: str) -> dict[str, Any] | None:
         
         text = response.text.strip()
         text = text.replace("```json", "").replace("```", "").strip()
-        return ast.literal_eval(text)
+        return json.loads(text)
         
     except Exception as e:
         print(f"Gemini API Error (Skin Image): {e}")
