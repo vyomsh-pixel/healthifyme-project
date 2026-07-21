@@ -11,11 +11,11 @@ from backend.database import database
 from backend.schemas import (
     BMIRequest, ChatRequest, CheckinRequest, FoodLogRequest, LoginRequest,
     MealPlanRequest, ProfileRequest, RegisterRequest, SkinLogRequest,
-    WorkoutCompleteRequest, WorkoutRequest, ImageUploadRequest
+    WorkoutCompleteRequest, WorkoutRequest, ImageUploadRequest, FoodAnalysisRequest
 )
 from backend.security import hash_password, new_session_token, session_expiry, token_hash, verify_password
 from backend.services import bmi_result, make_meal_plan, make_workout, wellness_chat_reply
-from backend.ai_services import analyze_food_image, analyze_skin_image
+from backend.ai_services import analyze_food_image, analyze_skin_image, analyze_food_text
 
 
 
@@ -297,11 +297,19 @@ def save_checkin(payload: CheckinRequest, current_user: CurrentUser) -> dict[str
 
 
 @router.post("/analyze-food")
-def analyze_food(payload: ImageUploadRequest, current_user: CurrentUser) -> dict[str, Any]:
-    result = analyze_food_image(payload.image)
-    if not result:
-        raise HTTPException(status_code=400, detail="We couldn't analyze that photo. Please try a clearer one or enter the values manually.")
-    return result
+def analyze_food(payload: FoodAnalysisRequest, current_user: CurrentUser) -> dict[str, Any]:
+    if payload.image:
+        result = analyze_food_image(payload.image)
+        if not result:
+            raise HTTPException(status_code=400, detail="We couldn't analyze that photo. Please try a clearer one or enter the values manually.")
+        return result
+    elif payload.text:
+        result = analyze_food_text(payload.text)
+        if not result:
+            raise HTTPException(status_code=400, detail="We couldn't analyze that text description. Please try being more specific or enter the values manually.")
+        return result
+    
+    raise HTTPException(status_code=400, detail="Must provide either an image or text description.")
 
 
 @router.post("/analyze-skin")

@@ -227,6 +227,49 @@ def generate_ai_workout(goal: str, level: str, location: str, duration: int, res
         return None
 
 
+def analyze_food_text(text: str) -> dict[str, Any] | None:
+    """Analyze a food description and return estimated nutritional info."""
+    client = _get_client()
+    if not client:
+        return None
+        
+    prompt = f"""
+    Analyze this meal description: "{text}"
+    Estimate the nutritional content.
+    
+    CRITICAL ANCHORS FOR YOUR ESTIMATION (USE THESE!):
+    - 1 katori (standard Indian bowl) = ~150g of cooked dal, rice, or sabzi.
+    - 1 spoonful = ~15g (tablespoon).
+    - 1 teaspoonful = ~5g (teaspoon).
+    - 1 fistful = ~30g.
+    - 1 standard roti = ~30-40g.
+    - 1 standard paratha = ~60-80g (depends on filling).
+    - 1 standard cup = ~240ml.
+    
+    Return ONLY a raw JSON dictionary (no markdown, no formatting).
+    Keys required:
+    - "food_name": string (brief summarized name of the meal)
+    - "calories": integer
+    - "protein_g": float
+    - "carbs_g": float
+    - "fat_g": float
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        
+        output = response.text.strip()
+        output = output.replace("```json", "").replace("```python", "").replace("```", "").strip()
+        
+        return ast.literal_eval(output)
+    except Exception as e:
+        print(f"Gemini API Error (Food Text Analysis): {e}")
+        return None
+
+
 def analyze_food_image(base64_image: str) -> dict[str, Any] | None:
     """Analyze a food image and return estimated nutritional info."""
     client = _get_client()

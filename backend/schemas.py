@@ -88,5 +88,19 @@ class CheckinRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class FoodAnalysisRequest(BaseModel):
+    image: str | None = Field(default=None, description="Base64 encoded image string, optionally prefixed with data URI scheme")
+    text: str | None = Field(default=None, min_length=2, max_length=1500, description="Text description of the food eaten")
+
+    @field_validator('text')
+    @classmethod
+    def check_at_least_one(cls, v, info):
+        image = info.data.get('image')
+        if not v and not image:
+            raise ValueError("You must provide either an image or a text description.")
+        if v and image:
+            raise ValueError("You cannot provide both an image and a text description.")
+        return v
+
 class ImageUploadRequest(BaseModel):
     image: str = Field(description="Base64 encoded image string, optionally prefixed with data URI scheme")
