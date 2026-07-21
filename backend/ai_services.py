@@ -178,7 +178,10 @@ def generate_ai_workout(goal: str, level: str, location: str, duration: int, res
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
         )
         
         text = response.text.strip()
@@ -258,7 +261,10 @@ def analyze_food_text(text: str) -> dict[str, Any] | None:
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
         )
         
         output = response.text.strip()
