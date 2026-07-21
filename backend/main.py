@@ -43,3 +43,7 @@ app.include_router(api_router)
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "service": "healthio-api", "version": app.version}
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Health.io API is running!"}
