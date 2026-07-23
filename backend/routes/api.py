@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import sqlite3
+import psycopg2.errors
 from datetime import UTC, date, datetime
 from typing import Any, Annotated
 
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api", tags=["healthio"])
 User = dict[str, Any]
 
 
-def row_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def row_dict(row) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
@@ -47,12 +47,12 @@ def require_user(authorization: Annotated[str | None, Header()] = None) -> User:
 CurrentUser = Annotated[User, Depends(require_user)]
 
 
-def get_profile(connection: sqlite3.Connection, user_id: int) -> dict[str, Any]:
+def get_profile(connection, user_id: int) -> dict[str, Any]:
     row = connection.execute("SELECT * FROM profiles WHERE user_id = ?", (user_id,)).fetchone()
     return row_dict(row) or {}
 
 
-def get_records(connection: sqlite3.Connection, user_id: int, record_type: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+def get_records(connection, user_id: int, record_type: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
     query = "SELECT id, record_type, payload, created_at FROM health_records WHERE user_id = ?"
     values: list[Any] = [user_id]
     if record_type:
@@ -66,7 +66,7 @@ def get_records(connection: sqlite3.Connection, user_id: int, record_type: str |
     return records
 
 
-def add_record(connection: sqlite3.Connection, user_id: int, record_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+def add_record(connection, user_id: int, record_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     cursor = connection.execute(
         "INSERT INTO health_records (user_id, record_type, payload) VALUES (?, ?, ?)",
         (user_id, record_type, json.dumps(payload)),
@@ -75,7 +75,7 @@ def add_record(connection: sqlite3.Connection, user_id: int, record_type: str, p
     return {"id": cursor.lastrowid, "type": record_type, "created_at": row["created_at"], **payload}
 
 
-def session_response(connection: sqlite3.Connection, user: User) -> dict[str, Any]:
+def session_response(connection, user: User) -> dict[str, Any]:
     token = new_session_token()
     connection.execute(
         "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
@@ -92,7 +92,7 @@ def register(payload: RegisterRequest) -> dict[str, Any]:
                 "INSERT INTO users (username, display_name, password_hash) VALUES (?, ?, ?)",
                 (payload.username.strip(), payload.display_name.strip(), hash_password(payload.password)),
             )
-        except sqlite3.IntegrityError as error:
+        except psycopg2.errors.UniqueViolation as error:
             raise HTTPException(status_code=409, detail="That username is already in use.") from error
         return session_response(connection, {"id": cursor.lastrowid, "username": payload.username.strip(), "display_name": payload.display_name.strip()})
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import psycopg2
 import psycopg2.extras
 import os
+import re
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -20,8 +21,13 @@ class PostgresConnectionWrapper:
         self.conn = conn
 
     def execute(self, query: str, vars=None):
-        # Translate SQLite ? to Postgres %s
+        # Translate SQLite ? positional params to Postgres %s
         query = query.replace("?", "%s")
+        
+        # Translate SQLite :named params to Postgres %(named)s
+        # Only when vars is a dict (named parameter mode)
+        if isinstance(vars, dict):
+            query = re.sub(r':(\w+)', r'%(\1)s', query)
         
         is_insert = query.strip().upper().startswith("INSERT")
         if is_insert and "RETURNING id" not in query.upper():
