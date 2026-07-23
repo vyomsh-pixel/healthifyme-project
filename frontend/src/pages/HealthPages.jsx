@@ -33,9 +33,10 @@ export function BMIPage() {
   const getBMIStatus = (category) => {
     if (!category) return null;
     const cat = category.toLowerCase();
-    if (cat.includes("normal")) return { color: "green", label: "Optimal" };
-    if (cat.includes("overweight") || cat.includes("underweight")) return { color: "amber", label: "Moderate" };
-    return { color: "red", label: "High Risk" };
+    if (cat.includes("usual")) return { color: "green", label: "Low Risk" };
+    if (cat.includes("below") || cat.includes("above")) return { color: "amber", label: "Moderate Risk" };
+    if (cat.includes("higher")) return { color: "red", label: "High Risk" };
+    return null;
   };
   async function submit(e) { e.preventDefault(); setBusy(true); try { const data = await request("/records/bmi", { method: "POST", body: { weight_kg: Number(weight), height_cm: Number(height) } }); setRecord(data.record); setNotice({ type: "success", text: "BMI measurement saved to your private history." }); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
   const bmiStatus = getBMIStatus(record?.category);
