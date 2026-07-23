@@ -48,14 +48,14 @@ class PostgresConnectionWrapper:
         
         # Don't append RETURNING id if it's already there or if the table doesn't have an 'id' column
         # Profiles table uses 'user_id' as PK, sessions table uses 'token_hash'
-        if is_insert and "RETURNING id" not in query.upper() and "into profiles" not in query.lower() and "into sessions" not in query.lower():
+        if is_insert and "RETURNING ID" not in query.upper() and "into profiles" not in query.lower() and "into sessions" not in query.lower():
             query += " RETURNING id"
 
         cursor = self.conn.cursor()
         cursor.execute(query, vars)
 
         lastrowid = None
-        if is_insert and "RETURNING id" in query.upper():
+        if is_insert and "RETURNING ID" in query.upper():
             row = cursor.fetchone()
             if row and 'id' in row:
                 lastrowid = row['id']
