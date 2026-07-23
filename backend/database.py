@@ -55,7 +55,12 @@ class PostgresConnectionWrapper:
 def get_connection():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL environment variable is not set")
-    connection = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    # psycopg2 does not support the '?pgbouncer=true' query parameter
+    # which is often included in Supabase connection strings.
+    clean_url = DATABASE_URL.replace("?pgbouncer=true", "")
+    
+    connection = psycopg2.connect(clean_url, cursor_factory=psycopg2.extras.RealDictCursor)
     return PostgresConnectionWrapper(connection)
 
 
