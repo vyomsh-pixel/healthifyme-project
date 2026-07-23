@@ -16,6 +16,21 @@ from typing import Iterator
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+class CursorWrapper:
+    def __init__(self, cursor, lastrowid=None):
+        self.cursor = cursor
+        self.lastrowid = lastrowid
+
+    def fetchone(self):
+        return self.cursor.fetchone()
+
+    def fetchall(self):
+        return self.cursor.fetchall()
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
+
 class PostgresConnectionWrapper:
     def __init__(self, conn):
         self.conn = conn
@@ -30,18 +45,22 @@ class PostgresConnectionWrapper:
             query = re.sub(r':(\w+)', r'%(\1)s', query)
         
         is_insert = query.strip().upper().startswith("INSERT")
-        if is_insert and "RETURNING id" not in query.upper():
+        
+        # Don't append RETURNING id if it's already there or if the table doesn't have an 'id' column
+        # Profiles table uses 'user_id' as PK, not 'id'
+        if is_insert and "RETURNING id" not in query.upper() and "INTO profiles" not in query.lower():
             query += " RETURNING id"
 
         cursor = self.conn.cursor()
         cursor.execute(query, vars)
 
-        if is_insert:
+        lastrowid = None
+        if is_insert and "RETURNING id" in query.upper():
             row = cursor.fetchone()
             if row and 'id' in row:
-                cursor.lastrowid = row['id']
+                lastrowid = row['id']
                 
-        return cursor
+        return CursorWrapper(cursor, lastrowid)
 
     def executescript(self, query: str):
         cursor = self.conn.cursor()
