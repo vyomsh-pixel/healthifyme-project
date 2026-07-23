@@ -12,9 +12,7 @@ import os
 import re
 from contextlib import contextmanager
 from typing import Iterator
-
-
-DATABASE_URL = os.getenv("DATABASE_URL")
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 class CursorWrapper:
     def __init__(self, cursor, lastrowid=None):
@@ -36,13 +34,13 @@ class PostgresConnectionWrapper:
         self.conn = conn
 
     def execute(self, query: str, vars=None):
-        # Translate SQLite ? positional params to Postgres %s
-        query = query.replace("?", "%s")
-        
-        # Translate SQLite :named params to Postgres %(named)s
-        # Only when vars is a dict (named parameter mode)
         if isinstance(vars, dict):
-            query = re.sub(r':(\w+)', r'%(\1)s', query)
+            # Translate SQLite :named params to Postgres %(named)s
+            # Use negative lookbehind to avoid corrupting Postgres type casts like ::text
+            query = re.sub(r'(?<!:):(\w+)', r'%(\1)s', query)
+        else:
+            # Translate SQLite ? positional params to Postgres %s
+            query = query.replace("?", "%s")
         
         is_insert = query.strip().upper().startswith("INSERT")
         
@@ -78,12 +76,16 @@ class PostgresConnectionWrapper:
 
 
 def get_connection():
-    if not DATABASE_URL:
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
         raise ValueError("DATABASE_URL environment variable is not set")
     
-    # psycopg2 does not support the '?pgbouncer=true' query parameter
-    # which is often included in Supabase connection strings.
-    clean_url = DATABASE_URL.replace("?pgbouncer=true", "")
+    database_url = database_url.strip()
+    
+    # Safely strip pgbouncer param from connection strings
+    parts = urlsplit(database_url)
+    params = [(k, v) for k, v in parse_qsl(parts.query) if k != "pgbouncer"]
+    clean_url = urlunsplit(parts._replace(query=urlencode(params)))
     
     connection = psycopg2.connect(clean_url, cursor_factory=psycopg2.extras.RealDictCursor)
     return PostgresConnectionWrapper(connection)
