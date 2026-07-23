@@ -434,22 +434,40 @@ small { display: block; color: var(--text-tertiary); margin-top: .3rem; font-wei
 @media (max-width: 850px) { 
   .app-sidebar { position: relative !important; width: 100% !important; height: auto !important; border-right: 0 !important; border-bottom: 1px solid var(--border); }
   .app-sidebar > div:first-child { padding: 1rem 1.25rem; }
-  .app-sidebar nav { display: flex; overflow-x: auto; padding: 0 .75rem .75rem; gap: 0.25rem; }
-  .app-sidebar nav a { white-space: nowrap; padding: 0.5rem 1rem !important; border-radius: 999px !important; }
+  .app-sidebar nav { 
+    display: flex; 
+    overflow-x: auto; 
+    padding: 0 .75rem .75rem; 
+    gap: 0.5rem; 
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+  .app-sidebar nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+  
+  .app-sidebar nav a { 
+    white-space: nowrap; 
+    padding: 0.75rem 1.25rem !important; /* Larger tap targets */
+    border-radius: 999px !important; 
+    min-height: 44px; /* Accessibility standard */
+    display: flex;
+    align-items: center;
+  }
+  
   .app-sidebar > div:last-child { display: none; }
   .app-main { margin-left: 0; }
-  .page-wrap { padding-top: 2rem; padding-left: 1.25rem; padding-right: 1.25rem; }
-  .dashboard-top, .two-column { grid-template-columns: 1fr; }
+  .page-wrap { padding-top: 1.5rem; padding-left: 1rem; padding-right: 1rem; }
+  .dashboard-top, .two-column { grid-template-columns: 1fr; gap: 1.5rem; }
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .chat-form { grid-template-columns: 1fr auto; }
-  .chat-form textarea { grid-column: 1 / -1; } 
+  .chat-form { grid-template-columns: 1fr; }
+  .chat-form button { width: 100%; margin-top: 0.5rem; }
 }
 @media (max-width: 480px) { 
-  .form-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; gap: 1rem; }
   .span-all { grid-column: auto; }
-  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .stat-grid { grid-template-columns: 1fr; } /* Full width stats on small phones */
   .choice-grid { grid-template-columns: 1fr; }
-  .page-header h1 { font-size: 2.25rem; }
-  .workout-list li, .table-list > article { flex-direction: column; align-items: flex-start; }
+  .page-header h1 { font-size: 2rem; }
+  .workout-list li, .table-list > article { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .table-list time { text-align: left; } 
+  button, input, select, textarea { min-height: 44px; } /* Enforce mobile tap targets globally */
 }

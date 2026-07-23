@@ -1,35 +1,66 @@
-"""SQLite persistence for Health.io.
+"""PostgreSQL persistence for Health.io.
 
-The first prototype stored health information in several JSON files.  This module
-keeps all data behind a small, portable SQLite database so records remain scoped
+Keeps all data behind a PostgreSQL database so records remain scoped
 to one account and writes are atomic.
 """
 
 from __future__ import annotations
 
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Iterator
 
 
-APP_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = APP_DIR.parent
-DATA_DIR = PROJECT_DIR / "data"
-DATABASE_PATH = Path(os.getenv("HEALTHIO_DATABASE_PATH", str(DATA_DIR / "healthio.db"))).resolve()
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+class PostgresConnectionWrapper:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def execute(self, query: str, vars=None):
+        # Translate SQLite ? to Postgres %s
+        query = query.replace("?", "%s")
+        
+        is_insert = query.strip().upper().startswith("INSERT")
+        if is_insert and "RETURNING id" not in query.upper():
+            query += " RETURNING id"
+
+        cursor = self.conn.cursor()
+        cursor.execute(query, vars)
+
+        if is_insert:
+            row = cursor.fetchone()
+            if row and 'id' in row:
+                cursor.lastrowid = row['id']
+                
+        return cursor
+
+    def executescript(self, query: str):
+        cursor = self.conn.cursor()
+        cursor.execute(query)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.conn.close()
 
 
-def get_connection() -> sqlite3.Connection:
-    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(DATABASE_PATH)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+def get_connection():
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set")
+    connection = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    return PostgresConnectionWrapper(connection)
 
 
 @contextmanager
-def database() -> Iterator[sqlite3.Connection]:
+def database():
     connection = get_connection()
     try:
         yield connection
@@ -46,67 +77,67 @@ def initialise_database() -> None:
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
                 display_name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS sessions (
                 token_hash TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                expires_at TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS profiles (
                 user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                 age INTEGER, gender TEXT, height_cm REAL, weight_kg REAL,
                 goal TEXT, activity_level TEXT, diet_preference TEXT,
-                bio TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                bio TEXT, updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS health_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 record_type TEXT NOT NULL,
                 payload TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_health_records_user_type_date
               ON health_records(user_id, record_type, created_at DESC);
 
             CREATE TABLE IF NOT EXISTS meal_plans (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 goal TEXT NOT NULL, diet_type TEXT NOT NULL, budget REAL,
                 meals_per_day INTEGER NOT NULL, extra_instructions TEXT,
-                plan_text TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                plan_text TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS workouts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 goal TEXT NOT NULL, level TEXT NOT NULL, location TEXT NOT NULL,
                 duration_minutes INTEGER NOT NULL, total_calories REAL NOT NULL DEFAULT 0,
-                exercises TEXT NOT NULL, completed_at TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                exercises TEXT NOT NULL, completed_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS chat_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-                content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS daily_checkins (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 checkin_date TEXT NOT NULL, sleep_hours REAL, steps INTEGER,
                 water_glasses INTEGER, mood INTEGER, energy INTEGER, soreness INTEGER,
-                note TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                note TEXT, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, checkin_date)
             );
             """
