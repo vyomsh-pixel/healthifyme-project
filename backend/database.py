@@ -47,8 +47,8 @@ class PostgresConnectionWrapper:
         is_insert = query.strip().upper().startswith("INSERT")
         
         # Don't append RETURNING id if it's already there or if the table doesn't have an 'id' column
-        # Profiles table uses 'user_id' as PK, not 'id'
-        if is_insert and "RETURNING id" not in query.upper() and "INTO profiles" not in query.lower():
+        # Profiles table uses 'user_id' as PK, sessions table uses 'token_hash'
+        if is_insert and "RETURNING id" not in query.upper() and "INTO profiles" not in query.lower() and "INTO sessions" not in query.lower():
             query += " RETURNING id"
 
         cursor = self.conn.cursor()
