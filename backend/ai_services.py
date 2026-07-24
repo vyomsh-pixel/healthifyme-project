@@ -294,18 +294,24 @@ def analyze_food_image(base64_image: str) -> dict[str, Any] | None:
     """
     
     try:
-        # Strip potential data URI prefix e.g., "data:image/jpeg;base64,"
+        # Extract MIME type if available (e.g., "data:image/png;base64,...")
+        mime_type = "image/jpeg"
         if "," in base64_image:
-            base64_image = base64_image.split(",")[1]
-            
+            header, base64_image = base64_image.split(",", 1)
+            if header.startswith("data:"):
+                mime_type = header.split(";")[0].replace("data:", "")
+                
         image_bytes = base64.b64decode(base64_image)
         
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
                 prompt,
-                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
-            ]
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
         )
         
         text = response.text.strip()
@@ -334,17 +340,23 @@ def analyze_skin_image(base64_image: str) -> dict[str, Any] | None:
     """
     
     try:
+        mime_type = "image/jpeg"
         if "," in base64_image:
-            base64_image = base64_image.split(",")[1]
-            
+            header, base64_image = base64_image.split(",", 1)
+            if header.startswith("data:"):
+                mime_type = header.split(";")[0].replace("data:", "")
+                
         image_bytes = base64.b64decode(base64_image)
         
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
                 prompt,
-                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
-            ]
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
         )
         
         text = response.text.strip()
