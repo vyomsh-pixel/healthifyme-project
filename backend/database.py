@@ -172,5 +172,15 @@ def initialise_database() -> None:
                 note TEXT, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, checkin_date)
             );
+            
+            CREATE TABLE IF NOT EXISTS rate_limits (
+                key TEXT NOT NULL,
+                endpoint TEXT NOT NULL,
+                window_start TIMESTAMP WITH TIME ZONE NOT NULL,
+                count INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (key, endpoint, window_start)
+            );
             """
         )
+        # Cleanup expired sessions on startup
+        conn.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")

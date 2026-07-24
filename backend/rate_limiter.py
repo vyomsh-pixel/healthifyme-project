@@ -17,13 +17,17 @@ class RateLimiter:
         key = None
         if self.by_user and authorization and authorization.startswith("Bearer "):
             token = authorization.removeprefix("Bearer ")
-            key = f"user:{token_hash(token)}"
+            hashed_token = token_hash(token)
+            with database() as conn:
+                row = conn.execute("SELECT user_id FROM sessions WHERE token_hash = ?", (hashed_token,)).fetchone()
+                if row:
+                    key = f"user:{row['user_id']}"
         
         if not key:
             client_ip = request.client.host if request.client else "127.0.0.1"
             forwarded = request.headers.get("x-forwarded-for")
             if forwarded:
-                client_ip = forwarded.split(",")[0].strip()
+                client_ip = forwarded.split(",")[-1].strip()
             key = f"ip:{client_ip}"
             
         endpoint = request.url.path

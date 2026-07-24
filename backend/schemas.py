@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 class RegisterRequest(BaseModel):
     display_name: str = Field(min_length=2, max_length=60)
     username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=8, max_length=128, pattern=r"^(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$", description="Password must contain at least 8 characters, one number, and one special character.")
 
 
 class LoginRequest(BaseModel):
@@ -89,7 +89,7 @@ class CheckinRequest(BaseModel):
 
 
 class FoodAnalysisRequest(BaseModel):
-    image: str | None = Field(default=None, description="Base64 encoded image string, optionally prefixed with data URI scheme")
+    image: str | None = Field(default=None, max_length=14000000, description="Base64 encoded image string, optionally prefixed with data URI scheme")
     text: str | None = Field(default=None, min_length=2, max_length=1500, description="Text description of the food eaten")
 
     @field_validator('text')
@@ -103,4 +103,4 @@ class FoodAnalysisRequest(BaseModel):
         return v
 
 class ImageUploadRequest(BaseModel):
-    image: str = Field(description="Base64 encoded image string, optionally prefixed with data URI scheme")
+    image: str = Field(max_length=14000000, description="Base64 encoded image string, optionally prefixed with data URI scheme")
