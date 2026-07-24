@@ -50,13 +50,13 @@ export default function Dashboard() {
       <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>YOUR WELLNESS OVERVIEW</p>
       <h1 style={{ fontSize: "clamp(3rem, 6vw, 4.5rem)", lineHeight: 0.95, letterSpacing: "-0.04em", fontWeight: 800, margin: "0" }}>
         Hi, {data.user.display_name.split(" ")[0]}.<br/>
-        Let's build toward <span style={{ color: "var(--status-green)" }}>{(data.profile.goal || "fitness").toLowerCase()}</span>.
+        Let's build toward <span style={{ color: "var(--status-green)" }}>{(data.profile?.goal || "fitness").toLowerCase()}</span>.
       </h1>
       <p className="muted" style={{ marginTop: "1.25rem", fontSize: "1.1rem" }}>Small, consistent actions are the point—not a perfect score.</p>
     </header>
     <div className="dashboard-top">
       <section className="score-card"><p className="label">WELLNESS CONSISTENCY</p><HealthScoreMark score={data.health_score} /><p className="score-note">Based on profile completion, recent food logs, completed workouts, meal plans, and your latest BMI. It is not a medical score.</p></section>
-      <section className="quick-actions"><p className="label">TODAY’S STARTING POINT</p><h2>{data.profile.goal ? `Build toward ${data.profile.goal}` : "Set a goal to personalize Health.io"}</h2><p>Log one thing now. That is enough to keep your trend moving.</p><div className="action-row"><Link className="button primary" to="/check-in">Check in</Link><Link className="button secondary" to="/food-scanner">Log food</Link></div></section>
+      <section className="quick-actions"><p className="label">TODAY’S STARTING POINT</p><h2>{data.profile?.goal ? `Build toward ${data.profile.goal}` : "Set a goal to personalize Health.io"}</h2><p>Log one thing now. That is enough to keep your trend moving.</p><div className="action-row"><Link className="button primary" to="/check-in">Check in</Link><Link className="button secondary" to="/food-scanner">Log food</Link></div></section>
     </div>
     <section className="stat-grid">
       <StatCard label="BMI records" value={counts.bmi_records} />
