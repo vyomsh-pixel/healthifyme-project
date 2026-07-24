@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "./dashboard";
 import { request } from "../lib/api";
+import { getBMIStatus } from "../lib/bmi";
 
 const initialProfile = { age: "", gender: "", height_cm: "", weight_kg: "", goal: "Fitness", activity_level: "Moderate", diet_preference: "Vegetarian", bio: "" };
 const dateTime = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value.endsWith("Z") || value.includes("+") ? value : `${value}Z`)) : "—";
@@ -30,14 +31,6 @@ export function CheckinPage() {
 
 export function BMIPage() {
   const [weight, setWeight] = useState(""); const [height, setHeight] = useState(""); const [record, setRecord] = useState(null); const [notice, setNotice] = useState(null); const [busy, setBusy] = useState(false);
-  const getBMIStatus = (category) => {
-    if (!category) return null;
-    const cat = category.toLowerCase();
-    if (cat.includes("usual")) return { color: "green", label: "Low Risk" };
-    if (cat.includes("below") || cat.includes("above")) return { color: "amber", label: "Moderate Risk" };
-    if (cat.includes("higher")) return { color: "red", label: "High Risk" };
-    return null;
-  };
   async function submit(e) { e.preventDefault(); setBusy(true); try { const data = await request("/records/bmi", { method: "POST", body: { weight_kg: Number(weight), height_cm: Number(height) } }); setRecord(data.record); setNotice({ type: "success", text: "BMI measurement saved to your private history." }); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
   const bmiStatus = getBMIStatus(record?.category);
   return <Page><Header eyebrow="BODY METRIC" title="BMI, with context." copy="BMI is a screening estimate, not a diagnosis or complete picture of health." /><div className="two-column"><form className="panel form-stack" onSubmit={submit}><NumberField label="Weight (kg)" value={weight} onChange={setWeight} min="20" max="400" step="0.1" /><NumberField label="Height (cm)" value={height} onChange={setHeight} min="80" max="250" step="0.1" /><Notice notice={notice} /><FormButton busy={busy}>Calculate and save</FormButton></form><section className="panel result-panel">{record ? <><p className="label">YOUR RESULT</p><div className="hero-number">{record.bmi}</div><h2 style={{display: "flex", alignItems: "center", gap: "0.5rem"}}>{record.category} {bmiStatus && <span className={`metric-card-status status-${bmiStatus.color}`}>● {bmiStatus.label}</span>}</h2><p>{record.guidance}</p><p className="muted">Use changes over time and professional advice—not one number alone.</p></> : <EmptyMessage text="Enter height and weight to calculate your BMI." />}</section></div></Page>;
@@ -121,15 +114,38 @@ export function ChatPage() {
 function Header({ eyebrow, title, copy }) { return <header className="page-header"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{copy}</p></header>; }
 function MarkdownMessage({ content }) {
   if (!content) return null;
-  const html = content
-    .replace(/</g, "&lt;").replace(/>/g, "&gt;") // sanitize basic
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
-    .replace(/\*(.*?)\*/g, "<em>$1</em>") // italic
-    .replace(/^(?:-|\*)\s+(.*)/gm, "<li>$1</li>") // list items
-    .replace(/(<li>.*<\/li>(?:\n<li>.*<\/li>)*)/g, "<ul class='chat-list'>$1</ul>") // wrap in ul
-    .replace(/\n/g, "<br />"); // line breaks
+  
+  const parseInline = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
+      if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
+      return part;
+    });
+  };
 
-  return <div className="message-content" dangerouslySetInnerHTML={{ __html: html }} />;
+  const lines = content.split('\\n');
+  const elements = [];
+  let inList = false;
+  let listItems = [];
+
+  lines.forEach((line, i) => {
+    const listMatch = line.match(/^(?:-|\\*)\\s+(.*)/);
+    if (listMatch) {
+      inList = true;
+      listItems.push(<li key={`li-${i}`}>{parseInline(listMatch[1])}</li>);
+    } else {
+      if (inList) {
+        elements.push(<ul key={`ul-${i}`} className="chat-list">{listItems}</ul>);
+        inList = false;
+        listItems = [];
+      }
+      elements.push(<span key={`span-${i}`}>{parseInline(line)}<br/></span>);
+    }
+  });
+  if (inList) elements.push(<ul key="ul-end" className="chat-list">{listItems}</ul>);
+
+  return <div className="message-content">{elements}</div>;
 }
 function EmptyMessage({ text }) { return <p className="muted empty-message">{text}</p>; }
 function Select({ label, value, onChange, options }) { return <label>{label}<select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option} value={option}>{option || "Select"}</option>)}</select></label>; }

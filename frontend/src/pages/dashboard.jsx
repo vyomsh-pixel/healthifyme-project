@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import HealthScoreMark from "../components/HealthScoreMark";
 import StatCard from "../components/StatCard";
 import { request } from "../lib/api";
+import { getBMIStatus } from "../lib/bmi";
 
 const ACTIVITY_LABELS = { BMI: "BMI check", FOOD: "Food log", SKIN: "Skin note", MEAL_PLAN: "Meal plan", WORKOUT: "Workout completed" };
 const formatDate = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value.endsWith("Z") || value.includes("+") ? value : `${value}Z`)) : "Not yet";
@@ -31,14 +32,6 @@ export default function Dashboard() {
     if (percent >= 90) return { color: "green", label: "Optimal" };
     if (percent >= 70) return { color: "amber", label: "Low" };
     return { color: "red", label: "Very Low" };
-  };
-
-  const getBMIStatus = (category) => {
-    if (!category) return null;
-    const cat = category.toLowerCase();
-    if (cat.includes("normal")) return { color: "green", label: "Optimal" };
-    if (cat.includes("overweight") || cat.includes("underweight")) return { color: "amber", label: "Moderate" };
-    return { color: "red", label: "High Risk" };
   };
 
   const calStatus = getCalorieStatus(Math.round((nutrition.calories / nutrition.calorie_goal) * 100));
