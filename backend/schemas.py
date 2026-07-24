@@ -10,7 +10,16 @@ from pydantic import BaseModel, Field, field_validator
 class RegisterRequest(BaseModel):
     display_name: str = Field(min_length=2, max_length=60)
     username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
-    password: str = Field(min_length=8, max_length=128, pattern=r"^(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$", description="Password must contain at least 8 characters, one number, and one special character.")
+    password: str = Field(min_length=8, max_length=128, description="Password must contain at least 8 characters, one number, and one special character.")
+
+    @field_validator('password')
+    @classmethod
+    def validate_password_complexity(cls, value: str) -> str:
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Password must contain at least one number")
+        if not any(not char.isalnum() for char in value):
+            raise ValueError("Password must contain at least one special character")
+        return value
 
 
 class LoginRequest(BaseModel):
