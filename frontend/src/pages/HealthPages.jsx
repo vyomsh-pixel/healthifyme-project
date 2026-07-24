@@ -22,8 +22,17 @@ function FormButton({ busy, children }) { return <button className="button prima
 function NumberField({ label, value, onChange, min, max, step = "1" }) { return <label>{label}<input type="number" min={min} max={max} step={step} value={value} onChange={(e) => onChange(e.target.value)} required /></label>; }
 function DeleteBtn({ onClick, label = "Delete" }) {
   const [confirming, setConfirming] = useState(false);
-  if (confirming) return <div className="delete-confirm"><span>Sure?</span><button className="delete-btn confirm-yes" onClick={onClick}>Yes</button><button className="delete-btn confirm-no" onClick={() => setConfirming(false)}>No</button></div>;
-  return <button className="delete-btn" onClick={() => setConfirming(true)} title={label}>🗑</button>;
+  if (confirming) return <div className="delete-confirm"><span>Sure?</span><button type="button" className="delete-btn confirm-yes" onClick={onClick}>Yes</button><button type="button" className="delete-btn confirm-no" onClick={() => setConfirming(false)}>No</button></div>;
+  return (
+    <button type="button" className="delete-btn" onClick={() => setConfirming(true)} title={label}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 6h18"></path>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+      </svg>
+    </button>
+  );
 }
 
 // ─── Chart defaults ──────────────────────────────────

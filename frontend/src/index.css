@@ -485,9 +485,10 @@ input[type=number] {
 /* ─── Delete Button ─────────────────────────────────── */
 .delete-btn {
   background: none; border: 1px solid transparent; border-radius: 8px;
-  cursor: pointer; font-size: 1rem; padding: 0.3rem 0.5rem;
-  opacity: 0.4; transition: all 0.2s ease;
+  cursor: pointer; font-size: 1rem; padding: 0.4rem;
+  opacity: 0.75; transition: all 0.2s ease;
   color: var(--text-secondary); line-height: 1;
+  display: flex; align-items: center; justify-content: center;
 }
 .delete-btn:hover { opacity: 1; color: var(--status-red); border-color: var(--status-red-dim); background: var(--status-red-dim); }
 .delete-confirm { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; }
