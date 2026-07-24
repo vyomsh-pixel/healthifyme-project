@@ -481,3 +481,35 @@ input[type=number] {
   .table-list time { text-align: left; } 
   button, input, select, textarea { min-height: 44px; } /* Enforce mobile tap targets globally */
 }
+
+/* ─── Delete Button ─────────────────────────────────── */
+.delete-btn {
+  background: none; border: 1px solid transparent; border-radius: 8px;
+  cursor: pointer; font-size: 1rem; padding: 0.3rem 0.5rem;
+  opacity: 0.4; transition: all 0.2s ease;
+  color: var(--text-secondary); line-height: 1;
+}
+.delete-btn:hover { opacity: 1; color: var(--status-red); border-color: var(--status-red-dim); background: var(--status-red-dim); }
+.delete-confirm { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; }
+.delete-confirm span { color: var(--text-tertiary); }
+.confirm-yes { color: var(--status-red) !important; opacity: 1 !important; font-weight: 700; }
+.confirm-no { opacity: 1 !important; }
+
+/* ─── History Item (with delete) ────────────────────── */
+.history-item { display: flex; justify-content: space-between; gap: 1.5rem; align-items: center; }
+
+/* ─── Chart Grid ────────────────────────────────────── */
+.chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-top: 1.25rem; }
+.chart-card { min-height: 280px; }
+.chart-wrap { position: relative; height: 220px; width: 100%; }
+@media (max-width: 850px) { .chart-grid { grid-template-columns: 1fr; } }
+
+/* ─── Check-in Row ──────────────────────────────────── */
+.checkin-row { padding: 0.75rem 0; }
+.checkin-row div:first-child b { margin-right: 0.5rem; }
+.checkin-row div:first-child span { font-size: 0.85rem; color: var(--text-tertiary); }
+.checkin-row div:nth-child(2) { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+/* ─── Saved Item (meal plan details with delete) ────── */
+.saved-item summary { display: flex; justify-content: space-between; align-items: center; }
+.saved-item summary > span { flex: 1; }

@@ -320,3 +320,87 @@ def analyze_skin(payload: ImageUploadRequest, current_user: CurrentUser) -> dict
     if not result or not {"concerns", "summary"}.issubset(result.keys()):
         raise HTTPException(status_code=400, detail="We couldn't analyze that photo. Please try a clearer one or log your observations manually.")
     return result
+
+
+@router.delete("/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_record(record_id: int, current_user: CurrentUser) -> Response:
+    with database() as connection:
+        cursor = connection.execute("DELETE FROM health_records WHERE id = ? AND user_id = ?", (record_id, current_user["id"]))
+        if not cursor.rowcount:
+            raise HTTPException(status_code=404, detail="Record not found.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/meal-plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_meal_plan(plan_id: int, current_user: CurrentUser) -> Response:
+    with database() as connection:
+        cursor = connection.execute("DELETE FROM meal_plans WHERE id = ? AND user_id = ?", (plan_id, current_user["id"]))
+        if not cursor.rowcount:
+            raise HTTPException(status_code=404, detail="Meal plan not found.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/analytics")
+def analytics(current_user: CurrentUser) -> dict[str, Any]:
+    with database() as connection:
+        # BMI trend (all records, chronological)
+        bmi_records = get_records(connection, current_user["id"], record_type="BMI", limit=50)
+        bmi_trend = [{"date": r["created_at"], "bmi": r.get("bmi")} for r in reversed(bmi_records) if r.get("bmi")]
+
+        # Daily calorie totals (last 14 days)
+        food_records = get_records(connection, current_user["id"], record_type="FOOD", limit=200)
+        daily_calories: dict[str, float] = {}
+        for r in food_records:
+            day = r["created_at"].split("T")[0] if isinstance(r["created_at"], str) else str(r["created_at"])[:10]
+            daily_calories[day] = daily_calories.get(day, 0) + (r.get("calories") or 0)
+        calorie_trend = [{"date": d, "calories": c} for d, c in sorted(daily_calories.items())[-14:]]
+
+        # Workout frequency (last 14 days)
+        workouts = connection.execute(
+            "SELECT completed_at, total_calories, duration_minutes FROM workouts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT ?",
+            (current_user["id"], 50),
+        ).fetchall()
+        daily_workouts: dict[str, dict[str, float]] = {}
+        for w in workouts:
+            ca = w["completed_at"]
+            day = ca.split("T")[0] if isinstance(ca, str) else str(ca)[:10]
+            if day not in daily_workouts:
+                daily_workouts[day] = {"count": 0, "calories": 0, "minutes": 0}
+            daily_workouts[day]["count"] += 1
+            daily_workouts[day]["calories"] += w["total_calories"] or 0
+            daily_workouts[day]["minutes"] += w["duration_minutes"] or 0
+        workout_trend = [{"date": d, **v} for d, v in sorted(daily_workouts.items())[-14:]]
+
+        # Check-in trends (last 14 days)
+        checkins = connection.execute(
+            "SELECT checkin_date, sleep_hours, steps, water_glasses, mood, energy FROM daily_checkins WHERE user_id = ? ORDER BY checkin_date DESC LIMIT ?",
+            (current_user["id"], 14),
+        ).fetchall()
+        checkin_trend = [dict(row) for row in reversed(checkins)]
+
+        return {
+            "bmi_trend": bmi_trend,
+            "calorie_trend": calorie_trend,
+            "workout_trend": workout_trend,
+            "checkin_trend": checkin_trend,
+        }
+
+
+@router.get("/checkins/today")
+def get_today_checkin(current_user: CurrentUser) -> dict[str, Any]:
+    with database() as connection:
+        row = connection.execute(
+            "SELECT * FROM daily_checkins WHERE user_id = ? AND checkin_date = ?",
+            (current_user["id"], date.today().isoformat()),
+        ).fetchone()
+        return {"checkin": dict(row) if row else None}
+
+
+@router.get("/checkins/history")
+def get_checkin_history(current_user: CurrentUser) -> dict[str, Any]:
+    with database() as connection:
+        rows = connection.execute(
+            "SELECT * FROM daily_checkins WHERE user_id = ? ORDER BY checkin_date DESC LIMIT ?",
+            (current_user["id"], 14),
+        ).fetchall()
+        return {"checkins": [dict(row) for row in rows]}
