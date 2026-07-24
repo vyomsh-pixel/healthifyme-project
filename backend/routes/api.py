@@ -16,10 +16,12 @@ from backend.schemas import (
 from backend.security import hash_password, new_session_token, session_expiry, token_hash, verify_password
 from backend.services import bmi_result, make_meal_plan, make_workout, wellness_chat_reply
 from backend.ai_services import analyze_food_image, analyze_skin_image, analyze_food_text
-
+from backend.rate_limiter import RateLimiter
 
 
 router = APIRouter(prefix="/api", tags=["healthio"])
+ip_limit = RateLimiter(5, 60)
+user_limit = RateLimiter(10, 60, by_user=True)
 User = dict[str, Any]
 
 
@@ -84,7 +86,7 @@ def session_response(connection, user: User) -> dict[str, Any]:
     return {"token": token, "user": {"id": user["id"], "username": user["username"], "display_name": user["display_name"]}}
 
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED, dependencies=[Depends(ip_limit)])
 def register(payload: RegisterRequest) -> dict[str, Any]:
     with database() as connection:
         try:
@@ -97,7 +99,7 @@ def register(payload: RegisterRequest) -> dict[str, Any]:
         return session_response(connection, {"id": cursor.lastrowid, "username": payload.username.strip(), "display_name": payload.display_name.strip()})
 
 
-@router.post("/auth/login")
+@router.post("/auth/login", dependencies=[Depends(ip_limit)])
 def login(payload: LoginRequest) -> dict[str, Any]:
     with database() as connection:
         row = connection.execute("SELECT * FROM users WHERE username = ?", (payload.username.strip(),)).fetchone()
@@ -194,7 +196,7 @@ def records(current_user: CurrentUser, record_type: str | None = None) -> dict[s
         return {"records": get_records(connection, current_user["id"], record_type=record_type)}
 
 
-@router.post("/meal-plans", status_code=status.HTTP_201_CREATED)
+@router.post("/meal-plans", status_code=status.HTTP_201_CREATED, dependencies=[Depends(user_limit)])
 def create_meal_plan(payload: MealPlanRequest, current_user: CurrentUser) -> dict[str, Any]:
     with database() as connection:
         profile = get_profile(connection, current_user["id"])
@@ -213,7 +215,7 @@ def meal_plans(current_user: CurrentUser) -> dict[str, Any]:
         return {"meal_plans": [dict(row) for row in rows]}
 
 
-@router.post("/workouts/generate")
+@router.post("/workouts/generate", dependencies=[Depends(user_limit)])
 def generate_workout(payload: WorkoutRequest, current_user: CurrentUser) -> dict[str, Any]:
     exercises = make_workout(payload.location, payload.level, payload.duration_minutes, payload.rest_seconds, payload.weight_kg)
     with database() as connection:
@@ -261,7 +263,7 @@ def chat_history(current_user: CurrentUser) -> dict[str, Any]:
         return {"messages": [dict(row) for row in rows]}
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(user_limit)])
 def chat(payload: ChatRequest, current_user: CurrentUser) -> dict[str, Any]:
     with database() as connection:
         connection.execute("INSERT INTO chat_messages (user_id, role, content) VALUES (?, 'user', ?)", (current_user["id"], payload.message))
@@ -296,7 +298,7 @@ def save_checkin(payload: CheckinRequest, current_user: CurrentUser) -> dict[str
         return {"checkin": dict(row)}
 
 
-@router.post("/analyze-food")
+@router.post("/analyze-food", dependencies=[Depends(user_limit)])
 def analyze_food(payload: FoodAnalysisRequest, current_user: CurrentUser) -> dict[str, Any]:
     if payload.image:
         result = analyze_food_image(payload.image)
@@ -312,7 +314,7 @@ def analyze_food(payload: FoodAnalysisRequest, current_user: CurrentUser) -> dic
     raise HTTPException(status_code=400, detail="Must provide either an image or text description.")
 
 
-@router.post("/analyze-skin")
+@router.post("/analyze-skin", dependencies=[Depends(user_limit)])
 def analyze_skin(payload: ImageUploadRequest, current_user: CurrentUser) -> dict[str, Any]:
     result = analyze_skin_image(payload.image)
     if not result:
