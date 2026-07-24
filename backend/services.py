@@ -14,7 +14,7 @@ from backend.ai_services import generate_wellness_chat_reply, generate_ai_meal_p
 def bmi_result(weight_kg: float, height_cm: float) -> dict[str, Any]:
     bmi = round(weight_kg / ((height_cm / 100) ** 2), 1)
     if bmi < 16:
-        category, guidance = "Well below recommended range", "This BMI is significantly low — please speak with a clinician about safe, sustainable ways to reach a healthier weight."
+        category, guidance = "Well below recommended range", "This BMI is significantly low. If this number seems unexpected, double-check your height and weight inputs for typos. Otherwise, please speak with a clinician."
     elif bmi < 18.5:
         category, guidance = "Below recommended range", "Focus on regular, nourishing meals and discuss persistent weight changes with a clinician."
     elif bmi < 25:
