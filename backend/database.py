@@ -183,4 +183,4 @@ def initialise_database() -> None:
             """
         )
         # Cleanup expired sessions on startup
-        conn.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
+        connection.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
