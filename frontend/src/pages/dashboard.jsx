@@ -5,7 +5,7 @@ import StatCard from "../components/StatCard";
 import { request } from "../lib/api";
 
 const ACTIVITY_LABELS = { BMI: "BMI check", FOOD: "Food log", SKIN: "Skin note", MEAL_PLAN: "Meal plan", WORKOUT: "Workout completed" };
-const formatDate = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${value}Z`)) : "Not yet";
+const formatDate = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value.endsWith("Z") || value.includes("+") ? value : `${value}Z`)) : "Not yet";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);

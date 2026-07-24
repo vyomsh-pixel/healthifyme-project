@@ -3,7 +3,7 @@ import { Page } from "./dashboard";
 import { request } from "../lib/api";
 
 const initialProfile = { age: "", gender: "", height_cm: "", weight_kg: "", goal: "Fitness", activity_level: "Moderate", diet_preference: "Vegetarian", bio: "" };
-const dateTime = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${value}Z`)) : "—";
+const dateTime = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value.endsWith("Z") || value.includes("+") ? value : `${value}Z`)) : "—";
 
 function Notice({ notice }) { return notice ? <p className={`notice ${notice.type}`}>{notice.text}</p> : null; }
 function useLoad(path, key) {
