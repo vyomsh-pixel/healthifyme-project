@@ -139,7 +139,7 @@ export function MealPlannerPage() {
   const update = (key) => (value) => setForm({ ...form, [key]: value });
   async function submit(e) { e.preventDefault(); setBusy(true); try { const result = await request("/meal-plans", { method: "POST", body: { ...form, budget: form.budget ? Number(form.budget) : null, meals_per_day: Number(form.meals_per_day) } }); setPlan(result.meal_plan); reload(); setNotice({ type: "success", text: "Your practical meal plan is ready and saved." }); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
   async function deletePlan(id) { try { await request(`/meal-plans/${id}`, { method: "DELETE" }); setData((d) => ({ ...d, meal_plans: d.meal_plans.filter((p) => p.id !== id) })); } catch (err) { setNotice({ type: "error", text: err.message }); } }
-  return <Page><Header eyebrow="MEAL PLANNER" title="Plan for real life, not perfection." copy="Plans are general guidance. For medical nutrition needs, consult a registered dietitian." /><div className="two-column"><form className="panel form-grid" onSubmit={submit}><label>Goal<select value={form.goal} onChange={(e) => update("goal")(e.target.value)}><option>Fat Loss</option><option>Muscle Gain</option><option>Fitness</option></select></label><label>Diet<select value={form.diet_type} onChange={(e) => update("diet_type")(e.target.value)}><option>Vegetarian</option><option>Non-vegetarian</option><option>Vegan</option><option>Eggetarian</option></select></label><NumberField label="Daily budget (optional, Rs.)" value={form.budget} onChange={update("budget")} min="0" max="100000" /><label>Meals per day<select value={form.meals_per_day} onChange={(e) => update("meals_per_day")(e.target.value)}>{[2,3,4,5,6].map((n) => <option key={n}>{n}</option>)}</select></label><label className="span-all">Preferences / constraints<textarea value={form.extra_instructions} onChange={(e) => update("extra_instructions")(e.target.value)} placeholder="Foods you dislike, schedule constraints, allergies to discuss with a professional…" /></label><Notice notice={notice} /><FormButton busy={busy}>Generate meal plan</FormButton></form><PlanCard plan={plan} /></div><section className="history-section"><p className="label">SAVED PLANS</p>{data?.meal_plans?.length ? data.meal_plans.map((item) => <details className="saved-item" key={item.id}><summary><span>{item.goal} · {item.diet_type}</span><div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><time>{dateTime(item.created_at)}</time><DeleteBtn onClick={() => deletePlan(item.id)} /></div></summary><PlanText text={item.plan_text} /></details>) : <p className="muted">Saved meal plans will appear here.</p>}</section></Page>;
+  return <Page><Header eyebrow="MEAL PLANNER" title="Plan for real life, not perfection." copy="Plans are general guidance. For medical nutrition needs, consult a registered dietitian." /><div className="two-column"><form className="panel form-grid" onSubmit={submit}><label>Goal<select value={form.goal} onChange={(e) => update("goal")(e.target.value)}><option>Fat Loss</option><option>Muscle Gain</option><option>Fitness</option></select></label><label>Diet<select value={form.diet_type} onChange={(e) => update("diet_type")(e.target.value)}><option>Vegetarian</option><option>Non-vegetarian</option><option>Vegan</option><option>Eggetarian</option></select></label><NumberField label="Daily budget (optional, Rs.)" value={form.budget} onChange={update("budget")} min="0" max="100000" /><label>Meals per day<select value={form.meals_per_day} onChange={(e) => update("meals_per_day")(e.target.value)}>{[2,3,4,5,6].map((n) => <option key={n}>{n}</option>)}</select></label><label className="span-all">Preferences / constraints<textarea value={form.extra_instructions} onChange={(e) => update("extra_instructions")(e.target.value)} placeholder="Foods you dislike, schedule constraints, allergies to discuss with a professional…" /></label><Notice notice={notice} /><FormButton busy={busy}>Generate meal plan</FormButton></form><PlanCard plan={plan} /></div><section className="history-section"><p className="label">SAVED PLANS</p>{data?.meal_plans?.length ? data.meal_plans.map((item) => <details className="saved-item" key={item.id}><summary><span>{item.goal} · {item.diet_type}</span><div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><time>{dateTime(item.created_at)}</time><DeleteBtn onClick={() => deletePlan(item.id)} /></div></summary><PlanViewer text={item.plan_text} /></details>) : <p className="muted">Saved meal plans will appear here.</p>}</section></Page>;
 }
 
 // ─── Workout Planner ─────────────────────────────────
@@ -290,7 +290,52 @@ function EmptyMessage({ text }) { return <p className="muted empty-message">{tex
 function Select({ label, value, onChange, options }) { return <label>{label}<select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option} value={option}>{option || "Select"}</option>)}</select></label>; }
 function Scale({ label, value, onChange, hint }) { return <label>{label}<select required value={value} onChange={(e) => onChange(e.target.value)}><option value="">Choose</option>{[1,2,3,4,5].map((n) => <option key={n}>{n}</option>)}</select><small>{hint}</small></label>; }
 function Metric({ label, value }) { return <article className="metric-card"><p>{label}</p><strong>{value}</strong></article>; }
-function PlanCard({ plan }) { return <section className="panel plan-card">{plan ? <><p className="label">YOUR SAVED PLAN</p><h2>{plan.goal} · {plan.diet_type}</h2><PlanText text={plan.plan_text} /></> : <EmptyMessage text="Your generated plan will stay here and be saved in your history." />}</section>; }
+function PlanCard({ plan }) { return <section className="panel plan-card">{plan ? <><p className="label">YOUR SAVED PLAN</p><h2>{plan.goal} · {plan.diet_type}</h2><PlanViewer text={plan.plan_text} /></> : <EmptyMessage text="Your generated plan will stay here and be saved in your history." />}</section>; }
+function PlanViewer({ text }) {
+  if (!text) return null;
+  try {
+    const data = JSON.parse(text);
+    return (
+      <div className="plan-structured" style={{ marginTop: "1rem" }}>
+        {data.plan_title && <h3 style={{ margin: "1rem 0 0.5rem 0", fontSize: "1.1rem" }}>{data.plan_title}</h3>}
+        
+        {data.meals && data.meals.map((meal, i) => (
+          <div key={i} style={{ marginTop: "1rem", padding: "1rem", background: "var(--surface-raised)", borderRadius: "12px", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <h4 style={{ margin: 0, fontSize: "1rem" }}>{meal.meal_type}</h4>
+              <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>
+                {meal.total_calories} kcal · {meal.total_protein_g}g protein
+              </span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+              {meal.items.map((item, j) => (
+                <li key={j} style={{ marginBottom: "0.25rem" }}>
+                  <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{item.name}</span>
+                  <span style={{ opacity: 0.8, marginLeft: "0.25rem" }}>({item.portion})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        
+        {(data.daily_total_calories || data.daily_total_protein_g) && (
+          <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border)", display: "flex", gap: "2rem" }}>
+            <div>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY CALORIES</span>
+              <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_calories || "--"}</b>
+            </div>
+            <div>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY PROTEIN</span>
+              <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_protein_g || "--"}g</b>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  } catch (e) {
+    return <PlanText text={text} />;
+  }
+}
 function PlanText({ text }) { return <div className="plan-text">{text.split("\n").map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line ? <p key={index}>{line.replace(/^- /, "• ")}</p> : <br key={index} />)}</div>; }
 function HistoryItem({ record, onDelete }) {
   const title = record.type === "BMI" ? `BMI ${record.bmi} · ${record.category}` : record.type === "FOOD" ? record.food_name : record.concerns?.join(", ") || "Skin note";

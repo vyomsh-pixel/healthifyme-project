@@ -1,7 +1,8 @@
 import os
 import json
 import random
-from typing import Any
+from typing import Any, List
+from pydantic import BaseModel
 
 from google import genai
 from google.genai import types
@@ -89,6 +90,25 @@ def generate_wellness_chat_reply(message: str, profile: dict[str, Any] | None, r
         return None
 
 
+class MealItem(BaseModel):
+    name: str
+    portion: str
+    calories: int
+    protein_g: int
+
+class Meal(BaseModel):
+    meal_type: str
+    items: List[MealItem]
+    total_calories: int
+    total_protein_g: int
+
+class MealPlanResult(BaseModel):
+    plan_title: str
+    daily_total_calories: int
+    daily_total_protein_g: int
+    meals: List[Meal]
+
+
 def generate_ai_meal_plan(goal: str, diet_type: str, budget: float | None, meals: int, extra_instructions: str | None, profile: dict[str, Any] | None) -> str | None:
     """Generate a meal plan using Gemini, returning None if the API is unavailable."""
     client = _get_client()
@@ -115,28 +135,34 @@ def generate_ai_meal_plan(goal: str, diet_type: str, budget: float | None, meals
 
     Requirements:
     - Make the meal plan practical
-    - Use a markdown list or simple table format
     - Use mostly Indian foods or easily available ingredients
-    - Mention calories roughly
-    - Mention protein sources
     - Include exactly {meals} meals (e.g. breakfast, lunch, dinner, snacks)
-    - Keep formatting clean and simple
-    - Avoid long paragraphs, use bullets
     - DO NOT give any fitness advice or health advice, ONLY the meal plan
     - DO NOT give user profile summary, ONLY the meal plan
     
     {f"Special instructions from the user (must follow these): {extra_instructions}" if extra_instructions else ""}
     """
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
-        return response.text
-    except Exception as e:
-        print(f"Gemini API Error (Meal): {e}")
-        return None
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=MealPlanResult,
+                ),
+            )
+            
+            # Validate the JSON string returned by Gemini
+            MealPlanResult.model_validate_json(response.text)
+            
+            return response.text
+        except Exception as e:
+            print(f"Gemini API Error (Meal, attempt {attempt + 1}): {e}")
+            
+    return None
+
 
 
 def generate_ai_workout(goal: str, level: str, location: str, duration: int, rest: int, weight_kg: float) -> list[dict[str, Any]] | None:
