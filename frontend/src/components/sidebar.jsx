@@ -46,18 +46,33 @@ function Icon({ name, className }) {
 export default function Sidebar({ username = "Member", onSignOut }) {
   return (
     <aside className="app-sidebar fixed left-0 top-0 h-screen w-[240px] flex flex-col">
-      <div className="px-6 pt-7 pb-6">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            Health
-          </span>
-          <span className="font-display text-2xl font-semibold tracking-tight text-[var(--accent)]">
-            .io
-          </span>
+      <div className="px-6 pt-7 pb-6 flex justify-between items-start mobile-header">
+        <div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+              Health
+            </span>
+            <span className="font-display text-2xl font-semibold tracking-tight text-[var(--accent)]">
+              .io
+            </span>
+          </div>
+          <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1 tracking-wide">
+            QUANTIFIED WELLNESS
+          </p>
         </div>
-        <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1 tracking-wide">
-          QUANTIFIED WELLNESS
-        </p>
+        {/* Mobile auth block - hidden on desktop via CSS */}
+        <div className="mobile-auth-block hidden items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center font-display text-sm font-semibold text-[#0a0e16] flex-shrink-0">
+            {username.charAt(0).toUpperCase()}
+          </div>
+          <button onClick={onSignOut} className="p-2 text-[var(--text-secondary)] hover:text-[var(--status-red)] transition-colors flex items-center justify-center" title="Sign out" style={{ minHeight: "44px" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 px-3 overflow-y-auto">
