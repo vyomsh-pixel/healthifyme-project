@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
-import psycopg2.errors
+import sqlite3
 from datetime import UTC, date, datetime
 from typing import Any, Annotated
+
+import psycopg2.errors
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
@@ -94,7 +96,7 @@ def register(payload: RegisterRequest) -> dict[str, Any]:
                 "INSERT INTO users (username, display_name, password_hash) VALUES (?, ?, ?)",
                 (payload.username.strip(), payload.display_name.strip(), hash_password(payload.password)),
             )
-        except psycopg2.errors.UniqueViolation as error:
+        except (psycopg2.errors.UniqueViolation, sqlite3.IntegrityError) as error:
             raise HTTPException(status_code=409, detail="That username is already in use.") from error
         return session_response(connection, {"id": cursor.lastrowid, "username": payload.username.strip(), "display_name": payload.display_name.strip()})
 
@@ -146,7 +148,7 @@ def dashboard(current_user: CurrentUser) -> dict[str, Any]:
         by_type = {kind: [record for record in records if record["type"] == kind] for kind in ("BMI", "FOOD", "SKIN")}
         meals = [dict(row) for row in connection.execute("SELECT * FROM meal_plans WHERE user_id = ? ORDER BY created_at DESC", (current_user["id"],)).fetchall()]
         workouts = [dict(row) for row in connection.execute("SELECT * FROM workouts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC", (current_user["id"],)).fetchall()]
-        today_food = [record for record in by_type["FOOD"] if record["created_at"].startswith(date.today().isoformat())]
+        today_food = [record for record in by_type["FOOD"] if str(record["created_at"]).startswith(date.today().isoformat())]
         calories = sum(record.get("calories", 0) for record in today_food)
         protein = sum(record.get("protein_g", 0) for record in today_food)
         latest_bmi = by_type["BMI"][0] if by_type["BMI"] else None
