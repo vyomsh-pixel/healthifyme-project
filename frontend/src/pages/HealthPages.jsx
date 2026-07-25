@@ -292,34 +292,72 @@ function Scale({ label, value, onChange, hint }) { return <label>{label}<select 
 function Metric({ label, value }) { return <article className="metric-card"><p>{label}</p><strong>{value}</strong></article>; }
 function PlanCard({ plan }) { return <section className="panel plan-card">{plan ? <><p className="label">YOUR SAVED PLAN</p><h2>{plan.goal} · {plan.diet_type}</h2><PlanViewer text={plan.plan_text} /></> : <EmptyMessage text="Your generated plan will stay here and be saved in your history." />}</section>; }
 function PlanViewer({ text }) {
+  const [currentMealIndex, setCurrentMealIndex] = useState(0);
+
   if (!text) return null;
   try {
     const data = JSON.parse(text);
+    
+    if (!data.meals || data.meals.length === 0) {
+      throw new Error("No meals in JSON");
+    }
+
+    const currentMeal = data.meals[currentMealIndex] || data.meals[0];
+    const handlePrev = () => setCurrentMealIndex(i => Math.max(0, i - 1));
+    const handleNext = () => setCurrentMealIndex(i => Math.min(data.meals.length - 1, i + 1));
+    
+    const handleCopy = () => {
+      let copyText = `Meal Plan: ${data.plan_title || 'Custom Plan'}\n`;
+      if (data.daily_total_calories) copyText += `Daily Calories: ${data.daily_total_calories} kcal\n`;
+      if (data.daily_total_protein_g) copyText += `Daily Protein: ${data.daily_total_protein_g}g\n\n`;
+      
+      data.meals.forEach(meal => {
+        copyText += `--- ${meal.meal_type} ---\n`;
+        copyText += `${meal.total_calories} kcal, ${meal.total_protein_g}g protein\n`;
+        if (meal.items) {
+          meal.items.forEach(item => {
+            copyText += `• ${item.name} (${item.portion})\n`;
+          });
+        }
+        copyText += `\n`;
+      });
+      navigator.clipboard.writeText(copyText.trim());
+      alert("Plan copied to clipboard!");
+    };
+
     return (
-      <div className="plan-structured" style={{ marginTop: "1rem" }}>
-        {data.plan_title && <h3 style={{ margin: "1rem 0 0.5rem 0", fontSize: "1.1rem" }}>{data.plan_title}</h3>}
+      <div className="plan-structured meal-carousel" style={{ marginTop: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--text-primary)" }}>{data.plan_title || "Your Meal Plan"}</h3>
+          <button className="button secondary" onClick={handleCopy} type="button" style={{ padding: "0.25rem 0.75rem", fontSize: "0.85rem", minHeight: "32px" }}>Copy Plan</button>
+        </div>
         
-        {data.meals && data.meals.map((meal, i) => (
-          <div key={i} style={{ marginTop: "1rem", padding: "1rem", background: "var(--surface-raised)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-              <h4 style={{ margin: 0, fontSize: "1rem" }}>{meal.meal_type}</h4>
-              <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>
-                {meal.total_calories} kcal · {meal.total_protein_g}g protein
-              </span>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-              {meal.items.map((item, j) => (
-                <li key={j} style={{ marginBottom: "0.25rem" }}>
-                  <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{item.name}</span>
-                  <span style={{ opacity: 0.8, marginLeft: "0.25rem" }}>({item.portion})</span>
-                </li>
-              ))}
-            </ul>
+        <div className="carousel-card panel" style={{ padding: "1.5rem", borderRadius: "16px", minHeight: "250px", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h4 style={{ margin: 0, fontSize: "1.2rem", color: "var(--brand)" }}>{currentMeal.meal_type}</h4>
+            <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", fontWeight: 500, background: "color-mix(in srgb, var(--surface) 60%, transparent)", padding: "4px 8px", borderRadius: "6px" }}>
+              {currentMeal.total_calories} kcal · {currentMeal.total_protein_g}g protein
+            </span>
           </div>
-        ))}
+          
+          <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--text-secondary)", fontSize: "1rem", flex: 1 }}>
+            {currentMeal.items && currentMeal.items.map((item, j) => (
+              <li key={j} style={{ marginBottom: "0.5rem" }}>
+                <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{item.name}</span>
+                <span style={{ opacity: 0.8, marginLeft: "0.25rem" }}>({item.portion})</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="carousel-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
+            <button className="button secondary carousel-btn" type="button" onClick={handlePrev} disabled={currentMealIndex === 0} style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", minHeight: "32px", opacity: currentMealIndex === 0 ? 0.4 : 1 }}>&larr; Prev</button>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-tertiary)" }}>Meal {currentMealIndex + 1} of {data.meals.length}</span>
+            <button className="button secondary carousel-btn" type="button" onClick={handleNext} disabled={currentMealIndex === data.meals.length - 1} style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", minHeight: "32px", opacity: currentMealIndex === data.meals.length - 1 ? 0.4 : 1 }}>Next &rarr;</button>
+          </div>
+        </div>
         
         {(data.daily_total_calories || data.daily_total_protein_g) && (
-          <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border)", display: "flex", gap: "2rem" }}>
+          <div style={{ marginTop: "1.5rem", display: "flex", gap: "2rem", justifyContent: "center", textAlign: "center", background: "color-mix(in srgb, var(--surface) 60%, transparent)", padding: "1rem", borderRadius: "12px", border: "1px solid var(--border)" }}>
             <div>
               <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY CALORIES</span>
               <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_calories || "--"}</b>
@@ -333,6 +371,7 @@ function PlanViewer({ text }) {
       </div>
     );
   } catch (e) {
+    console.error("PlanViewer JSON parse or render error:", e);
     return <PlanText text={text} />;
   }
 }
