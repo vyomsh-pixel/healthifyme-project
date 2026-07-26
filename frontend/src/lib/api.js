@@ -52,5 +52,5 @@ export async function authenticate(mode, values) {
 }
 
 export async function signOut() {
-  try { await request("/auth/logout", { method: "POST" }); } finally { clearSession(); }
+  try { await request("/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ } finally { clearSession(); }
 }
