@@ -38,7 +38,7 @@ def generate_wellness_chat_reply(message: str, profile: dict[str, Any] | None, r
         history_items = []
         for item in recent_history:
             kind = item.get("type", "Activity")
-            date = item.get("created_at", "").split("T")[0]
+            date = str(item.get("created_at", ""))[:10]
             if kind == "FOOD":
                 history_items.append(f"- {date}: Ate {item.get('food_name')} ({item.get('calories')} kcal)")
             elif kind == "BMI":
