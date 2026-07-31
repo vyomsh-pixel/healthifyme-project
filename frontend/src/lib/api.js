@@ -1,6 +1,40 @@
-const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 const API_BASE = import.meta.env.VITE_API_BASE_URL || (isLocal ? "http://localhost:8001/api" : "https://healthifyme-project.onrender.com/api");
 const SESSION_KEY = "healthio-session";
+
+export function normalizeErrorMessage(data, fallback = "Something went wrong. Please try again.") {
+  if (typeof data === "string") return data;
+  if (!data || typeof data !== "object") return fallback;
+
+  if (typeof data.message === "string" && data.message.trim()) return data.message;
+  if (typeof data.error === "string" && data.error.trim()) return data.error;
+  if (typeof data.msg === "string" && data.msg.trim()) return data.msg;
+
+  const detail = data.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          if (typeof item.msg === "string") return item.msg;
+          if (typeof item.message === "string") return item.message;
+          return JSON.stringify(item);
+        }
+        return "";
+      })
+      .filter(Boolean);
+    if (parts.length) return parts.join(" • ");
+  }
+  if (detail && typeof detail === "object") {
+    if (typeof detail.message === "string") return detail.message;
+    if (typeof detail.error === "string") return detail.error;
+    if (typeof detail.msg === "string") return detail.msg;
+    return JSON.stringify(detail);
+  }
+
+  return fallback;
+}
 
 export function getSession() {
   try {
@@ -29,8 +63,18 @@ export async function request(path, { method = "GET", body, token = getSession()
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (response.status === 204) return null;
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.detail || "Something went wrong. Please try again.");
+
+    const rawText = await response.text();
+    let data = {};
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(normalizeErrorMessage(data));
+    }
     return data;
   } catch (err) {
     // Catch generic network failures thrown by fetch()
