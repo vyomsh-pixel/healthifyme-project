@@ -51,6 +51,16 @@ export async function authenticate(mode, values) {
   return session;
 }
 
-export async function signOut() {
-  try { await request("/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ } finally { clearSession(); }
+export function signOut() {
+  const token = getSession()?.token;
+  clearSession();
+  if (!token) return;
+
+  void request("/auth/logout", {
+    method: "POST",
+    token,
+    retries: 0,
+  }).catch(() => {
+    // Ignore server-side logout failures so the client signs out immediately.
+  });
 }

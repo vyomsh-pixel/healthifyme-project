@@ -1,11 +1,18 @@
 import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv()  # picks up backend/.env (or root .env if run from root)
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+for dotenv_path in (Path(__file__).resolve().parent / ".env", ROOT_DIR / ".env"):
+    load_dotenv(dotenv_path, override=False)
 
 from backend.database import initialise_database
 from backend.routes.api import router as api_router

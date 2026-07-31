@@ -1,18 +1,22 @@
-"""PostgreSQL persistence for Health.io.
+"""Persistence for Health.io.
 
-Keeps all data behind a PostgreSQL database so records remain scoped
-to one account and writes are atomic.
+Uses PostgreSQL when DATABASE_URL is configured and falls back to SQLite for
+local development so the API can start without extra infrastructure.
 """
 
 from __future__ import annotations
 
-import psycopg2
-import psycopg2.extras
 import os
 import re
+import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Iterator
-from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+import psycopg2
+import psycopg2.extras
+
 
 class CursorWrapper:
     def __init__(self, cursor, lastrowid=None):
@@ -29,23 +33,18 @@ class CursorWrapper:
     def rowcount(self):
         return self.cursor.rowcount
 
+
 class PostgresConnectionWrapper:
     def __init__(self, conn):
         self.conn = conn
 
     def execute(self, query: str, vars=None):
         if isinstance(vars, dict):
-            # Translate SQLite :named params to Postgres %(named)s
-            # Use negative lookbehind to avoid corrupting Postgres type casts like ::text
             query = re.sub(r'(?<!:):(\w+)', r'%(\1)s', query)
         else:
-            # Translate SQLite ? positional params to Postgres %s
             query = query.replace("?", "%s")
-        
+
         is_insert = query.strip().upper().startswith("INSERT")
-        
-        # Don't append RETURNING id if it's already there or if the table doesn't have an 'id' column
-        # Profiles table uses 'user_id' as PK, sessions table uses 'token_hash'
         if is_insert and "RETURNING ID" not in query.upper() and "into profiles" not in query.lower() and "into sessions" not in query.lower():
             query += " RETURNING id"
 
@@ -55,9 +54,9 @@ class PostgresConnectionWrapper:
         lastrowid = None
         if is_insert and "RETURNING ID" in query.upper():
             row = cursor.fetchone()
-            if row and 'id' in row:
-                lastrowid = row['id']
-                
+            if row and "id" in row:
+                lastrowid = row["id"]
+
         return CursorWrapper(cursor, lastrowid)
 
     def executescript(self, query: str):
@@ -75,20 +74,59 @@ class PostgresConnectionWrapper:
         self.conn.close()
 
 
+class SQLiteConnectionWrapper:
+    def __init__(self, conn):
+        self.conn = conn
+        self.conn.row_factory = sqlite3.Row
+
+    def _prepare_query(self, query: str) -> str:
+        return re.sub(r"\bSERIAL\b", "INTEGER", query)
+
+    def execute(self, query: str, vars=None):
+        cursor = self.conn.cursor()
+        if vars is None:
+            cursor.execute(self._prepare_query(query))
+        else:
+            cursor.execute(self._prepare_query(query), vars)
+        return CursorWrapper(cursor, cursor.lastrowid)
+
+    def executescript(self, query: str):
+        cursor = self.conn.cursor()
+        cursor.executescript(self._prepare_query(query))
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.conn.close()
+
+
 def get_connection():
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise ValueError("DATABASE_URL environment variable is not set")
-    
-    database_url = database_url.strip()
-    
-    # Safely strip pgbouncer param from connection strings
-    parts = urlsplit(database_url)
-    params = [(k, v) for k, v in parse_qsl(parts.query) if k != "pgbouncer"]
-    clean_url = urlunsplit(parts._replace(query=urlencode(params)))
-    
-    connection = psycopg2.connect(clean_url, cursor_factory=psycopg2.extras.RealDictCursor)
-    return PostgresConnectionWrapper(connection)
+    database_url = (os.getenv("DATABASE_URL") or "").strip()
+    if database_url.startswith("sqlite"):
+        db_path = database_url.removeprefix("sqlite:///")
+        db_path = db_path.replace("/", "\\") if os.name == "nt" else db_path
+        connection = sqlite3.connect(db_path)
+        return SQLiteConnectionWrapper(connection)
+
+    if database_url:
+        parts = urlsplit(database_url)
+        params = [(k, v) for k, v in parse_qsl(parts.query) if k != "pgbouncer"]
+        clean_url = urlunsplit(parts._replace(query=urlencode(params)))
+        connection = psycopg2.connect(clean_url, cursor_factory=psycopg2.extras.RealDictCursor)
+        return PostgresConnectionWrapper(connection)
+
+    sqlite_path = os.getenv("SQLITE_DB_PATH")
+    if not sqlite_path:
+        sqlite_path = str(Path(__file__).resolve().parent.parent / "healthio.sqlite3")
+    sqlite_path = Path(sqlite_path)
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(sqlite_path)
+    return SQLiteConnectionWrapper(connection)
 
 
 @contextmanager
@@ -109,7 +147,7 @@ def initialise_database() -> None:
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
                 display_name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
@@ -131,7 +169,7 @@ def initialise_database() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS health_records (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 record_type TEXT NOT NULL,
                 payload TEXT NOT NULL,
@@ -141,7 +179,7 @@ def initialise_database() -> None:
               ON health_records(user_id, record_type, created_at DESC);
 
             CREATE TABLE IF NOT EXISTS meal_plans (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 goal TEXT NOT NULL, diet_type TEXT NOT NULL, budget REAL,
                 meals_per_day INTEGER NOT NULL, extra_instructions TEXT,
@@ -149,7 +187,7 @@ def initialise_database() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS workouts (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 goal TEXT NOT NULL, level TEXT NOT NULL, location TEXT NOT NULL,
                 duration_minutes INTEGER NOT NULL, total_calories REAL NOT NULL DEFAULT 0,
@@ -158,21 +196,21 @@ def initialise_database() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS chat_messages (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
                 content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS daily_checkins (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 checkin_date TEXT NOT NULL, sleep_hours REAL, steps INTEGER,
                 water_glasses INTEGER, mood INTEGER, energy INTEGER, soreness INTEGER,
                 note TEXT, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, checkin_date)
             );
-            
+
             CREATE TABLE IF NOT EXISTS rate_limits (
                 key TEXT NOT NULL,
                 endpoint TEXT NOT NULL,
@@ -182,5 +220,4 @@ def initialise_database() -> None:
             );
             """
         )
-        # Cleanup expired sessions on startup
-        connection.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
+        connection.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")

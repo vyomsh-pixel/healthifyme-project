@@ -44,9 +44,9 @@ function AppShell({ session, onSignOut }) {
 export default function App() {
   const [session, setSession] = useState(getSession);
 
-  async function handleSignOut() {
-    await signOut();
+  function handleSignOut() {
     setSession(null);
+    signOut();
   }
 
   return (
