@@ -1,13 +1,14 @@
 // Firebase Client Initialization & Google Sign-In Provider
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCEuPu8cUu_SEDPJ33XM-n18XTQJ9MRFBk",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "pocketledger-935d4.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "pocketledger-935d4",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "pocketledger-935d4.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "554900514852",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:554900514852:web:b32599599a23e3730250b1",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-V7WEK60ET1"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD8xs71Khb3Hax9Ia4fNZ97DvtR6Mszk-E",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "healthio-13cb9.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "healthio-13cb9",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "healthio-13cb9.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "180803807220",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:180803807220:web:0b445f7d4c6b53480cbba1",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-1QPENHT1NJ"
 };
+
 
 export function getFirebaseApp() {
   if (typeof window === "undefined" || typeof window.firebase === "undefined") {
