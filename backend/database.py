@@ -110,14 +110,27 @@ def get_connection():
     if database_url.startswith("sqlite"):
         db_path = database_url.removeprefix("sqlite:///")
         db_path = db_path.replace("/", "\\") if os.name == "nt" else db_path
-        connection = sqlite3.connect(db_path)
+        connection = sqlite3.connect(db_path, timeout=10.0)
+        try:
+            connection.execute("PRAGMA journal_mode=WAL;")
+            connection.execute("PRAGMA busy_timeout=5000;")
+        except Exception:
+            pass
         return SQLiteConnectionWrapper(connection)
 
     if database_url:
         parts = urlsplit(database_url)
         params = [(k, v) for k, v in parse_qsl(parts.query) if k != "pgbouncer"]
         clean_url = urlunsplit(parts._replace(query=urlencode(params)))
-        connection = psycopg2.connect(clean_url, cursor_factory=psycopg2.extras.RealDictCursor)
+        connection = psycopg2.connect(
+            clean_url,
+            cursor_factory=psycopg2.extras.RealDictCursor,
+            connect_timeout=10,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5,
+        )
         return PostgresConnectionWrapper(connection)
 
     sqlite_path = os.getenv("SQLITE_DB_PATH")
@@ -125,7 +138,12 @@ def get_connection():
         sqlite_path = str(Path(__file__).resolve().parent.parent / "healthio.sqlite3")
     sqlite_path = Path(sqlite_path)
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(sqlite_path)
+    connection = sqlite3.connect(sqlite_path, timeout=10.0)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL;")
+        connection.execute("PRAGMA busy_timeout=5000;")
+    except Exception:
+        pass
     return SQLiteConnectionWrapper(connection)
 
 

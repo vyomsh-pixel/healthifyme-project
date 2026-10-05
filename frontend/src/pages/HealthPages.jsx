@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { Page } from "./dashboard";
 import { request } from "../lib/api";
 import { getBMIStatus } from "../lib/bmi";
+import { compressImageFile } from "../lib/imageCompressor";
 import { Line, Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler } from "chart.js";
 
@@ -101,7 +102,17 @@ export function BMIPage() {
 export function FoodPage() {
   const [form, setForm] = useState({ food_name: "", calories: "", protein_g: "", carbs_g: "", fat_g: "", note: "" }); const [notice, setNotice] = useState(null); const [busy, setBusy] = useState(false); const [preview, setPreview] = useState(null); const [base64Image, setBase64Image] = useState(null); const [analyzing, setAnalyzing] = useState(false); const [foodText, setFoodText] = useState("");
   const update = (key) => (value) => setForm({ ...form, [key]: value });
-  const handleFile = (e) => { const file = e.target.files?.[0]; if (file) { setPreview(URL.createObjectURL(file)); const reader = new FileReader(); reader.onloadend = () => setBase64Image(reader.result); reader.readAsDataURL(file); } else { setPreview(null); setBase64Image(null); } };
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+      const compressed = await compressImageFile(file, { maxDimension: 1024, quality: 0.82 });
+      setBase64Image(compressed);
+    } else {
+      setPreview(null);
+      setBase64Image(null);
+    }
+  };
   async function analyzeFoodInfo(type) {
     if (type === 'image' && !base64Image) return;
     if (type === 'text' && !foodText.trim()) { setNotice({ type: "error", text: "Please enter a food description first." }); return; }
@@ -110,8 +121,22 @@ export function FoodPage() {
       const body = type === 'image' ? { image: base64Image } : { text: foodText };
       const data = await request("/analyze-food", { method: "POST", body });
       if (!data) throw new Error("No data returned from AI.");
-      setForm(prev => ({ ...prev, food_name: data.food_name || prev.food_name, calories: data.calories?.toString() || prev.calories, protein_g: data.protein_g?.toString() || prev.protein_g, carbs_g: data.carbs_g?.toString() || prev.carbs_g, fat_g: data.fat_g?.toString() || prev.fat_g }));
-      setNotice({ type: "success", text: "AI analysis complete! You can tweak the values before saving." });
+      setForm(prev => ({
+        ...prev,
+        food_name: data.food_name || prev.food_name,
+        calories: data.calories != null ? data.calories.toString() : prev.calories,
+        protein_g: data.protein_g != null ? data.protein_g.toString() : prev.protein_g,
+        carbs_g: data.carbs_g != null ? data.carbs_g.toString() : prev.carbs_g,
+        fat_g: data.fat_g != null ? data.fat_g.toString() : prev.fat_g
+      }));
+      if (data.is_offline_estimate) {
+        setNotice({
+          type: "warning",
+          text: "AI service is currently offline. Values were estimated using standard nutrition heuristics — please verify and adjust before saving."
+        });
+      } else {
+        setNotice({ type: "success", text: "AI analysis complete! You can tweak the values before saving." });
+      }
     } catch (err) {
       setNotice({ type: "error", text: "AI Analysis failed: " + err.message });
     } finally {
@@ -127,8 +152,43 @@ export function SkinPage() {
   const [summary, setSummary] = useState(""); const [concerns, setConcerns] = useState([]); const [notice, setNotice] = useState(null); const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null); const [base64Image, setBase64Image] = useState(null); const [analyzing, setAnalyzing] = useState(false);
   const options = ["Acne / pimples", "Dryness", "Oiliness", "Redness", "Pigmentation", "Dark circles"];
-  const handleFile = (e) => { const file = e.target.files?.[0]; if (file) { setPreview(URL.createObjectURL(file)); const reader = new FileReader(); reader.onloadend = () => setBase64Image(reader.result); reader.readAsDataURL(file); } else { setPreview(null); setBase64Image(null); } };
-  async function analyzeSkin() { if (!base64Image) return; setAnalyzing(true); setNotice(null); try { const data = await request("/analyze-skin", { method: "POST", body: { image: base64Image } }); if (data.concerns) { setConcerns(prev => Array.from(new Set([...prev, ...data.concerns.filter(c => options.includes(c))]))); } if (data.summary) { setSummary(prev => prev ? prev + "\n\nAI Notes: " + data.summary : "AI Notes: " + data.summary); } setNotice({ type: "success", text: "AI skin analysis complete! Review the notes before saving." }); } catch (err) { setNotice({ type: "error", text: "AI Analysis failed: " + err.message }); } finally { setAnalyzing(false); } }
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+      const compressed = await compressImageFile(file, { maxDimension: 1400, quality: 0.85 });
+      setBase64Image(compressed);
+    } else {
+      setPreview(null);
+      setBase64Image(null);
+    }
+  };
+  async function analyzeSkin() {
+    if (!base64Image) return;
+    setAnalyzing(true);
+    setNotice(null);
+    try {
+      const data = await request("/analyze-skin", { method: "POST", body: { image: base64Image } });
+      if (data.status === "unavailable" || data.is_offline_fallback) {
+        setNotice({
+          type: "warning",
+          text: data.summary || "AI skin analysis is currently unavailable. Please select any noticeable cosmetic features and log notes manually."
+        });
+      } else {
+        if (data.concerns && data.concerns.length) {
+          setConcerns(prev => Array.from(new Set([...prev, ...data.concerns.filter(c => options.includes(c))])));
+        }
+        if (data.summary) {
+          setSummary(prev => prev ? prev + "\n\nAI Notes: " + data.summary : "AI Notes: " + data.summary);
+        }
+        setNotice({ type: "success", text: "AI skin analysis complete! Review the notes before saving." });
+      }
+    } catch (err) {
+      setNotice({ type: "error", text: "AI Analysis failed: " + err.message });
+    } finally {
+      setAnalyzing(false);
+    }
+  }
   async function submit(e) { e.preventDefault(); setBusy(true); try { await request("/records/skin", { method: "POST", body: { summary, concerns } }); setNotice({ type: "success", text: "Private skin note saved. It is not a diagnosis." }); setSummary(""); setConcerns([]); setPreview(null); setBase64Image(null); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
   return <Page><Header eyebrow="SKIN JOURNAL" title="Notice patterns safely." copy="Upload a photo to let AI help log cosmetic observations. Persistent, painful, sudden, or concerning changes deserve a clinician's input." /><div className="two-column"><form className="panel form-stack" onSubmit={submit}><label className="upload-box">Optional skin photo<input type="file" accept="image/*" onChange={handleFile} />{preview && <img src={preview} alt="Skin" />}</label>{base64Image && <button type="button" className="button secondary" onClick={analyzeSkin} disabled={analyzing}>{analyzing ? "Analyzing..." : "Analyze Photo with AI"}</button>}<fieldset><legend>What are you noticing?</legend><div className="choice-grid">{options.map((item) => <label className="check-choice" key={item}><input type="checkbox" checked={concerns.includes(item)} onChange={() => setConcerns(concerns.includes(item) ? concerns.filter((x) => x !== item) : [...concerns, item])} />{item}</label>)}</div></fieldset><label>Notes<textarea required minLength="2" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="When it started, products used, discomfort, and anything that changed…" /></label><Notice notice={notice} /><FormButton busy={busy}>Save skin note</FormButton></form><section className="panel safety-panel"><p className="label">WHEN TO GET HELP</p><h2>Don't wait on an app for urgent symptoms.</h2><p>Seek professional care for severe swelling, breathing difficulty, rapidly spreading rash, significant pain, fever, signs of infection, or anything worrying you.</p><div className="point-of-result-disclaimer" style={{ marginTop: "1rem", padding: "0.75rem 1rem", borderRadius: "8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: "0.75rem", color: "var(--text-tertiary)", lineHeight: "1.4" }}><strong style={{ color: "var(--text-secondary)", display: "block", marginBottom: "0.2rem" }}>Cosmetic Self-Tracking Only</strong>This is an AI visual estimate of surface skin features, not a clinical diagnosis. Photos are streamed to Google Gemini for real-time analysis and are not retained on our servers. Health.io never prescribes treatment.</div></section></div></Page>;
 }
