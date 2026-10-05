@@ -48,6 +48,14 @@ app.add_middleware(
 )
 
 @app.middleware("http")
+async def normalize_api_prefix(request, call_next):
+    # Ensure routes match whether Vercel serverless passes /api/path or /path
+    if not request.scope["path"].startswith("/api") and request.scope["path"] != "/":
+        request.scope["path"] = "/api" + request.scope["path"]
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
     response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"

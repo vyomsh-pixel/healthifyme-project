@@ -1,5 +1,5 @@
 const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-const API_BASE = import.meta.env.VITE_API_BASE_URL || (isLocal ? "http://localhost:8001/api" : "https://healthifyme-project.onrender.com/api");
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (isLocal ? "http://localhost:8001/api" : "/api");
 const SESSION_KEY = "healthio-session";
 
 export function normalizeErrorMessage(data, fallback = "Something went wrong. Please try again.") {
