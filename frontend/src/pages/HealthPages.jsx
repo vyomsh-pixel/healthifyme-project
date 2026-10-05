@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { Page } from "./dashboard";
+import Page from "../components/Page";
 import { request } from "../lib/api";
 import { getBMIStatus } from "../lib/bmi";
 import { compressImageFile } from "../lib/imageCompressor";

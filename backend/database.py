@@ -169,6 +169,7 @@ def initialise_database() -> None:
                 username TEXT NOT NULL UNIQUE,
                 display_name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
+                google_id TEXT,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -238,4 +239,12 @@ def initialise_database() -> None:
             );
             """
         )
+        try:
+            connection.execute("ALTER TABLE users ADD COLUMN google_id TEXT")
+        except Exception:
+            pass
+        try:
+            connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL")
+        except Exception:
+            pass
         connection.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")

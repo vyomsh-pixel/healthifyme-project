@@ -95,6 +95,13 @@ export async function authenticate(mode, values) {
   return session;
 }
 
+export async function authenticateGoogle(authPayload) {
+  const session = await request("/auth/google", { method: "POST", body: authPayload, token: null });
+  saveSession(session);
+  return session;
+}
+
+
 export function signOut() {
   const token = getSession()?.token;
   clearSession();

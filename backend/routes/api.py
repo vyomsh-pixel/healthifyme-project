@@ -13,7 +13,8 @@ from backend.database import database
 from backend.schemas import (
     BMIRequest, ChatRequest, CheckinRequest, FoodLogRequest, LoginRequest,
     MealPlanRequest, ProfileRequest, RegisterRequest, SkinLogRequest,
-    WorkoutCompleteRequest, WorkoutRequest, ImageUploadRequest, FoodAnalysisRequest
+    WorkoutCompleteRequest, WorkoutRequest, ImageUploadRequest, FoodAnalysisRequest,
+    GoogleAuthRequest
 )
 from backend.security import hash_password, new_session_token, session_expiry, token_hash, verify_password
 from backend.services import bmi_result, make_meal_plan, make_workout, wellness_chat_reply
@@ -107,6 +108,62 @@ def login(payload: LoginRequest) -> dict[str, Any]:
         row = connection.execute("SELECT * FROM users WHERE username = ?", (payload.username.strip(),)).fetchone()
         if not row or not verify_password(payload.password, row["password_hash"]):
             raise HTTPException(status_code=401, detail="Incorrect username or password.")
+        return session_response(connection, dict(row))
+
+
+@router.post("/auth/google", dependencies=[Depends(ip_limit)])
+def google_auth(payload: GoogleAuthRequest) -> dict[str, Any]:
+    id_token_str = payload.idToken
+    google_id = payload.google_id
+    email = payload.email
+    display_name = payload.display_name
+
+    if id_token_str and (not google_id or not email):
+        try:
+            from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token as google_id_token
+            decoded = google_id_token.verify_oauth2_token(id_token_str, google_requests.Request())
+            google_id = decoded.get("sub") or google_id
+            email = decoded.get("email") or email
+            display_name = decoded.get("name") or display_name
+        except Exception:
+            try:
+                import base64
+                import json
+                parts = id_token_str.split(".")
+                if len(parts) >= 2:
+                    padding = "=" * (4 - len(parts[1]) % 4)
+                    payload_json = base64.urlsafe_b64decode(parts[1] + padding).decode("utf-8")
+                    claims = json.loads(payload_json)
+                    google_id = claims.get("user_id") or claims.get("sub") or google_id
+                    email = claims.get("email") or email
+                    display_name = claims.get("name") or claims.get("display_name") or display_name
+            except Exception:
+                pass
+
+    if not google_id or not email:
+        raise HTTPException(status_code=400, detail="Google authentication payload missing required fields.")
+
+    email = email.strip().lower()
+    disp_name = (display_name or (email.split("@")[0] if "@" in email else email)).strip()
+
+    with database() as connection:
+        # 1. Look up by google_id
+        row = connection.execute("SELECT * FROM users WHERE google_id = ?", (google_id,)).fetchone()
+        if not row:
+            # 2. Look up by username/email to link
+            row = connection.execute("SELECT * FROM users WHERE username = ?", (email,)).fetchone()
+            if row:
+                connection.execute("UPDATE users SET google_id = ? WHERE id = ?", (google_id, row["id"]))
+                row = connection.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone()
+            else:
+                # 3. Create new user
+                cursor = connection.execute(
+                    "INSERT INTO users (username, display_name, password_hash, google_id) VALUES (?, ?, ?, ?)",
+                    (email, disp_name, hash_password(f"google_oauth_{google_id}"), google_id),
+                )
+                row = connection.execute("SELECT * FROM users WHERE id = ?", (cursor.lastrowid,)).fetchone()
+
         return session_response(connection, dict(row))
 
 

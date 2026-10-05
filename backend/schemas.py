@@ -27,6 +27,13 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class GoogleAuthRequest(BaseModel):
+    idToken: str | None = None
+    google_id: str | None = None
+    email: str | None = None
+    display_name: str | None = None
+
+
 class ProfileRequest(BaseModel):
     age: int | None = Field(default=None, ge=13, le=120)
     gender: str | None = Field(default=None, max_length=40)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import Page from "../components/Page";
 import HealthScoreMark from "../components/HealthScoreMark";
 import StatCard from "../components/StatCard";
 import { request } from "../lib/api";
@@ -18,8 +19,10 @@ export default function Dashboard() {
   if (!data) return <Page><p className="loading">Loading your private dashboard…</p></Page>;
   const { latest, today_nutrition: nutrition, counts } = data;
   
-  const caloriePercent = Math.min(100, Math.round((nutrition.calories / nutrition.calorie_goal) * 100));
-  const proteinPercent = Math.min(100, Math.round((nutrition.protein_g / nutrition.protein_goal) * 100));
+  const calGoal = nutrition.calorie_goal > 0 ? nutrition.calorie_goal : 2000;
+  const proGoal = nutrition.protein_goal > 0 ? nutrition.protein_goal : 120;
+  const caloriePercent = Math.min(100, Math.max(0, Math.round(((nutrition.calories || 0) / calGoal) * 100)));
+  const proteinPercent = Math.min(100, Math.max(0, Math.round(((nutrition.protein_g || 0) / proGoal) * 100)));
 
   // Determine status by distance from optimal
   const getCalorieStatus = (percent) => {
@@ -66,6 +69,6 @@ export default function Dashboard() {
   </Page>;
 }
 
-export function Page({ children }) { return <div className="page-wrap">{children}</div>; }
+export { Page } from "../components/Page";
 function Progress({ value, label, status }) { return <div className="progress-block"><div><span>{label}</span><div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>{status && <span className={`metric-card-status status-${status.color}`}>● {status.label}</span>}<b>{value}%</b></div></div><div className="progress-track"><i style={{ width: `${value}%`, background: status ? `var(--status-${status.color})` : undefined }} /></div></div>; }
 function Empty({ text, to, action }) { return <div className="empty"><p>{text}</p><Link className="text-link" to={to}>{action} →</Link></div>; }

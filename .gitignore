@@ -10,3 +10,5 @@ frontend/dist/
 .vscode/
 .DS_Store
 healthio.db
+*.sqlite3
+*.sqlite
