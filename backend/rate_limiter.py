@@ -27,43 +27,41 @@ class RateLimiter:
             client_ip = request.client.host if request.client else "127.0.0.1"
             forwarded = request.headers.get("x-forwarded-for")
             if forwarded:
-                client_ip = forwarded.split(",")[-1].strip()
+                client_ip = forwarded.split(",")[0].strip()
             key = f"ip:{client_ip}"
             
         endpoint = request.url.path
         
         now = time.time()
         window_start_ts = now - (now % self.window)
-        window_start = datetime.fromtimestamp(window_start_ts, tz=timezone.utc)
+        window_start = datetime.fromtimestamp(window_start_ts, tz=timezone.utc).isoformat()
         
         try:
             with database() as conn:
-                query = """
+                conn.execute(
+                    """
                     INSERT INTO rate_limits (key, endpoint, window_start, count)
-                    VALUES (%(key)s, %(endpoint)s, %(window_start)s, 1)
-                    ON CONFLICT (key, endpoint, window_start) 
-                    DO UPDATE SET count = rate_limits.count + 1
-                    RETURNING count;
-                """
-                cursor = conn.conn.cursor()
-                cursor.execute(query, {
-                    "key": key,
-                    "endpoint": endpoint,
-                    "window_start": window_start
-                })
-                result = cursor.fetchone()
-                current_count = result["count"] if result else 1
+                    VALUES (?, ?, ?, 1)
+                    ON CONFLICT (key, endpoint, window_start)
+                    DO UPDATE SET count = count + 1
+                    """,
+                    (key, endpoint, window_start),
+                )
+                row = conn.execute(
+                    "SELECT count FROM rate_limits WHERE key = ? AND endpoint = ? AND window_start = ?",
+                    (key, endpoint, window_start),
+                ).fetchone()
+                current_count = row["count"] if row else 1
                 
                 # Cleanup old windows occasionally (10% chance per request)
                 if int(now) % 10 == 0:
-                    cleanup_query = "DELETE FROM rate_limits WHERE window_start < %(cleanup_time)s"
-                    cleanup_time = datetime.fromtimestamp(now - (self.window * 2), tz=timezone.utc)
-                    cursor.execute(cleanup_query, {"cleanup_time": cleanup_time})
+                    cleanup_time = datetime.fromtimestamp(now - (self.window * 2), tz=timezone.utc).isoformat()
+                    conn.execute("DELETE FROM rate_limits WHERE window_start < ?", (cleanup_time,))
                     
-                if current_count > self.requests:
-                    raise HTTPException(status_code=429, detail="Too Many Requests")
-                    
+            if current_count > self.requests:
+                raise HTTPException(status_code=429, detail="Too Many Requests")
+                
         except HTTPException:
             raise
         except Exception as e:
-            logger.warning(f"Rate limiter database error, failing open: {e}")
+            logger.warning(f"Rate limiter database error, failing open: {type(e).__name__}")

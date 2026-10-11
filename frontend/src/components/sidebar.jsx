@@ -65,8 +65,8 @@ export default function Sidebar({ username = "Member", onSignOut }) {
           <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center font-display text-sm font-semibold text-[#0a0e16] flex-shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
-          <button onClick={onSignOut} className="p-2 text-[var(--text-secondary)] hover:text-[var(--status-red)] transition-colors flex items-center justify-center" title="Sign out" style={{ minHeight: "44px" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button onClick={onSignOut} className="p-2 text-[var(--text-secondary)] hover:text-[var(--status-red)] transition-colors flex items-center justify-center" title="Sign out" aria-label="Sign out" style={{ minHeight: "44px" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>

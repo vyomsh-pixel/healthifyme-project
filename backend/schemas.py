@@ -11,6 +11,7 @@ class RegisterRequest(BaseModel):
     display_name: str = Field(min_length=2, max_length=60)
     username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
     password: str = Field(min_length=8, max_length=128, description="Password must contain at least 8 characters, one number, and one special character.")
+    consent_accepted: bool = True
 
     @field_validator('password')
     @classmethod
@@ -25,6 +26,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     password: str = Field(min_length=1, max_length=128)
+    consent_accepted: bool = True
 
 
 class GoogleAuthRequest(BaseModel):
@@ -32,6 +34,7 @@ class GoogleAuthRequest(BaseModel):
     google_id: str | None = None
     email: str | None = None
     display_name: str | None = None
+    consent_accepted: bool = True
 
 
 class ProfileRequest(BaseModel):

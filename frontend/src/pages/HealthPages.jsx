@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Page from "../components/Page";
-import { request } from "../lib/api";
+import { request, formatDate, exportAccountData, deleteAccount } from "../lib/api";
 import { getBMIStatus } from "../lib/bmi";
 import { compressImageFile } from "../lib/imageCompressor";
 import { Line, Bar } from "react-chartjs-2";
@@ -9,8 +9,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
 
 const initialProfile = { age: "", gender: "", height_cm: "", weight_kg: "", goal: "Fitness", activity_level: "Moderate", diet_preference: "Vegetarian", bio: "" };
-const dateTime = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value.endsWith("Z") || value.includes("+") ? value : `${value}Z`)) : "—";
-const shortDate = (value) => { if (!value) return ""; const d = new Date(value.endsWith("Z") || value.includes("+") || value.includes("T") ? value : `${value}T00:00:00`); return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+const dateTime = (value) => formatDate(value);
+const shortDate = (value) => { if (!value) return ""; const norm = String(value).trim().replace(" ", "T"); const d = new Date(norm.endsWith("Z") || norm.includes("+") || norm.includes("T") ? norm : `${norm}T00:00:00`); return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
 
 function Notice({ notice }) { return notice ? <p className={`notice ${notice.type}`}>{notice.text}</p> : null; }
 function useLoad(path, key) {
@@ -23,10 +23,10 @@ function FormButton({ busy, children }) { return <button className="button prima
 function NumberField({ label, value, onChange, min, max, step = "1" }) { return <label>{label}<input type="number" min={min} max={max} step={step} value={value} onChange={(e) => onChange(e.target.value)} required /></label>; }
 function DeleteBtn({ onClick, label = "Delete" }) {
   const [confirming, setConfirming] = useState(false);
-  if (confirming) return <div className="delete-confirm"><span>Sure?</span><button type="button" className="delete-btn confirm-yes" onClick={onClick}>Yes</button><button type="button" className="delete-btn confirm-no" onClick={() => setConfirming(false)}>No</button></div>;
+  if (confirming) return <div className="delete-confirm"><span>Sure?</span><button type="button" className="delete-btn confirm-yes" aria-label={`Confirm ${label}`} onClick={onClick}>Yes</button><button type="button" className="delete-btn confirm-no" aria-label={`Cancel ${label}`} onClick={() => setConfirming(false)}>No</button></div>;
   return (
-    <button type="button" className="delete-btn" onClick={() => setConfirming(true)} title={label}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <button type="button" className="delete-btn" onClick={() => setConfirming(true)} title={label} aria-label={label}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M3 6h18"></path>
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -208,18 +208,28 @@ export function WorkoutPage() {
   const update = (key) => (value) => setForm({ ...form, [key]: value });
   async function generate(e) { e.preventDefault(); setBusy(true); try { const result = await request("/workouts/generate", { method: "POST", body: numbers(form, ["duration_minutes", "rest_seconds", "weight_kg"]) }); setWorkout(result.workout); setNotice({ type: "success", text: "Workout generated. Read the form cues before starting." }); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
   async function complete() { if (!workout) return; setBusy(true); try { const calories = workout.exercises.reduce((total, item) => total + item.estimated_calories, 0); await request(`/workouts/${workout.id}/complete`, { method: "POST", body: { total_calories: calories } }); setNotice({ type: "success", text: "Workout saved as completed. Nice work showing up." }); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
-  return <Page><Header eyebrow="WORKOUT PLANNER" title="A session you can explain—and do." copy="Generated plans are conservative general fitness guidance. Stop for sharp pain, dizziness, chest pain, or unusual breathlessness." /><div className="two-column"><form className="panel form-grid" onSubmit={generate}><Select label="Goal" value={form.goal} onChange={update("goal")} options={["Fat Loss", "Muscle Gain", "Fitness"]} /><Select label="Experience" value={form.level} onChange={update("level")} options={["Beginner", "Intermediate", "Advanced"]} /><Select label="Location" value={form.location} onChange={update("location")} options={["Home", "Gym"]} /><NumberField label="Duration (minutes)" value={form.duration_minutes} onChange={update("duration_minutes")} min="15" max="120" /><NumberField label="Rest (seconds)" value={form.rest_seconds} onChange={update("rest_seconds")} min="10" max="120" /><NumberField label="Body weight (kg)" value={form.weight_kg} onChange={update("weight_kg")} min="20" max="400" step="0.1" /><Notice notice={notice} /><FormButton busy={busy}>Build workout</FormButton></form><section className="panel">{workout ? <><p className="label">YOUR SESSION</p><h2>{workout.goal} · {workout.duration_minutes} min</h2><ol className="workout-list">{workout.exercises.map((exercise) => <li key={exercise.name}><div><b>{exercise.name}</b><span>{exercise.sets} · {exercise.seconds}s · rest {exercise.rest_seconds}s</span><small>{exercise.form_cue}</small></div><a href={exercise.video_search} target="_blank" rel="noreferrer">Form guide ↗</a></li>)}</ol><button className="button primary" disabled={busy} onClick={complete}>Mark workout complete</button></> : <EmptyMessage text="Choose your preferences to build a structured session." />}</section></div></Page>;
+  return <Page><Header eyebrow="WORKOUT PLANNER" title="A session you can explain—and do." copy="Generated plans are conservative general fitness guidance. Stop for sharp pain, dizziness, chest pain, or unusual breathlessness." /><div className="two-column"><form className="panel form-grid" onSubmit={generate}><Select label="Goal" value={form.goal} onChange={update("goal")} options={["Fat Loss", "Muscle Gain", "Fitness"]} /><Select label="Experience" value={form.level} onChange={update("level")} options={["Beginner", "Intermediate", "Advanced"]} /><Select label="Location" value={form.location} onChange={update("location")} options={["Home", "Gym"]} /><NumberField label="Duration (minutes)" value={form.duration_minutes} onChange={update("duration_minutes")} min="15" max="120" /><NumberField label="Rest (seconds)" value={form.rest_seconds} onChange={update("rest_seconds")} min="10" max="120" /><NumberField label="Body weight (kg)" value={form.weight_kg} onChange={update("weight_kg")} min="20" max="400" step="0.1" /><Notice notice={notice} /><FormButton busy={busy}>Build workout</FormButton></form><section className="panel">{workout ? <><p className="label">YOUR SESSION</p><h2>{workout.goal} · {workout.duration_minutes} min</h2><ol className="workout-list">{workout.exercises.map((exercise, idx) => <li key={`${exercise.name}-${idx}`}><div><b>{exercise.name}</b><span>{exercise.sets} · {exercise.seconds}s · rest {exercise.rest_seconds}s</span><small>{exercise.form_cue}</small></div><a href={exercise.video_search} target="_blank" rel="noreferrer">Form guide ↗</a></li>)}</ol><button className="button primary" disabled={busy} onClick={complete}>Mark workout complete</button></> : <EmptyMessage text="Choose your preferences to build a structured session." />}</section></div></Page>;
 }
 
 // ─── Analytics (with charts + delete) ────────────────
 export function AnalyticsPage() {
   const { data: workoutData, loading, error, reload: reloadWorkouts, setData: setWorkoutData } = useLoad("/workouts", "workouts");
   const { data: analyticsData, reload: reloadAnalytics } = useLoad("/analytics", "analytics");
+  const [actionError, setActionError] = useState("");
   const workouts = workoutData?.workouts || []; const completed = workouts.filter((item) => item.completed_at);
   const totalMinutes = completed.reduce((sum, item) => sum + item.duration_minutes, 0);
   const totalCalories = completed.reduce((sum, item) => sum + item.total_calories, 0);
 
-  async function deleteWorkout(id) { try { await request(`/workouts/${id}`, { method: "DELETE" }); setWorkoutData((d) => ({ ...d, workouts: d.workouts.filter((w) => w.id !== id) })); } catch {} }
+  async function deleteWorkout(id) {
+    setActionError("");
+    try {
+      await request(`/workouts/${id}`, { method: "DELETE" });
+      setWorkoutData((d) => ({ ...d, workouts: d.workouts.filter((w) => w.id !== id) }));
+      reloadAnalytics();
+    } catch (err) {
+      setActionError(err.message || "Failed to delete workout.");
+    }
+  }
 
   const bmiTrend = analyticsData?.bmi_trend || [];
   const calorieTrend = analyticsData?.calorie_trend || [];
@@ -253,6 +263,7 @@ export function AnalyticsPage() {
 
   return <Page><Header eyebrow="ANALYTICS" title="Progress is a history, not a mood." copy="Review your trends across workouts, nutrition, BMI, and daily check-ins." />
     {error && <div className="notice error">{error}<button onClick={reloadWorkouts}>Try again</button></div>}
+    {actionError && <div className="notice error" role="alert">{actionError}</div>}
     {loading ? <p className="loading">Loading analytics…</p> : <>
       <div className="stat-grid">
         <Metric label="Completed sessions" value={completed.length} /><Metric label="Minutes trained" value={totalMinutes} />
@@ -271,7 +282,7 @@ export function AnalyticsPage() {
       <section className="panel" style={{ marginTop: "1.5rem" }}><p className="label">SESSION HISTORY</p>
         {workouts.length ? <div className="table-list">{workouts.map((item) => <article key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div><b>{item.goal}</b><span>{item.level} · {item.location} · {item.duration_minutes} min</span></div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}><span>{item.completed_at ? "Completed" : "Planned"}</span><time>{dateTime(item.completed_at || item.created_at)}</time><DeleteBtn onClick={() => deleteWorkout(item.id)} /></div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}><span>{item.completed_at ? "Completed" : "Planned"}</span><time>{dateTime(item.completed_at || item.created_at)}</time><DeleteBtn onClick={() => deleteWorkout(item.id)} label={`Delete ${item.goal} workout`} /></div>
         </article>)}</div> : <EmptyMessage text="Finish a workout to see useful trends here." />}
       </section>
     </>}
@@ -282,23 +293,127 @@ export function AnalyticsPage() {
 export function HistoryPage() {
   const { data, loading, error, reload, setData } = useLoad("/records", "records");
   const [filter, setFilter] = useState("ALL");
+  const [actionError, setActionError] = useState("");
   const records = (data?.records || []).filter((record) => filter === "ALL" || record.type === filter);
 
   async function deleteRecord(id) {
-    try { await request(`/records/${id}`, { method: "DELETE" }); setData((d) => ({ ...d, records: d.records.filter((r) => r.id !== id) })); } catch {}
+    setActionError("");
+    try {
+      await request(`/records/${id}`, { method: "DELETE" });
+      setData((d) => ({ ...d, records: d.records.filter((r) => r.id !== id) }));
+    } catch (err) {
+      setActionError(err.message || "Failed to delete record.");
+    }
   }
 
-  return <Page><Header eyebrow="HEALTH HISTORY" title="Your private record." copy="Records are visible only to the signed-in account in this local setup." /><div className="filter-row">{["ALL", "BMI", "FOOD", "SKIN"].map((type) => <button className={filter === type ? "selected" : ""} onClick={() => setFilter(type)} key={type}>{type === "ALL" ? "All activity" : type}</button>)}</div>{error && <div className="notice error">{error}<button onClick={reload}>Try again</button></div>}{loading ? <p className="loading">Loading your history…</p> : <div className="form-stack">{records.length ? records.map((record) => <HistoryItem record={record} onDelete={() => deleteRecord(record.id)} key={`${record.type}-${record.id}`} />) : <EmptyMessage text="No records match this view yet." />}</div>}</Page>;
+  return <Page><Header eyebrow="HEALTH HISTORY" title="Your private record." copy="Records are visible only to the signed-in account in this local setup." /><div className="filter-row">{["ALL", "BMI", "FOOD", "SKIN"].map((type) => <button className={filter === type ? "selected" : ""} onClick={() => setFilter(type)} key={type}>{type === "ALL" ? "All activity" : type}</button>)}</div>{error && <div className="notice error">{error}<button onClick={reload}>Try again</button></div>}{actionError && <div className="notice error" role="alert">{actionError}</div>}{loading ? <p className="loading">Loading your history…</p> : <div className="form-stack">{records.length ? records.map((record) => <HistoryItem record={record} onDelete={() => deleteRecord(record.id)} key={`${record.type}-${record.id}`} />) : <EmptyMessage text="No records match this view yet." />}</div>}</Page>;
 }
 
 // ─── Profile ─────────────────────────────────────────
-export function ProfilePage() {
-  const { data, loading, error, reload } = useLoad("/me", "me"); const [form, setForm] = useState(initialProfile); const [notice, setNotice] = useState(null); const [busy, setBusy] = useState(false);
+export function ProfilePage({ onSignOut }) {
+  const { data, loading, error, reload } = useLoad("/me", "me");
+  const [form, setForm] = useState(initialProfile);
+  const [notice, setNotice] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   useEffect(() => { if (data?.profile) setForm({ ...initialProfile, ...Object.fromEntries(Object.entries(data.profile).filter(([key]) => key in initialProfile).map(([key, value]) => [key, value ?? ""])) }); }, [data]);
   const update = (key) => (value) => setForm({ ...form, [key]: value });
   async function submit(e) { e.preventDefault(); setBusy(true); try { await request("/profile", { method: "PUT", body: nullableNumbers(form, ["age", "height_cm", "weight_kg"]) }); setNotice({ type: "success", text: "Profile saved. Future planning and guidance can use these preferences." }); reload(); } catch (err) { setNotice({ type: "error", text: err.message }); } finally { setBusy(false); } }
+
+  async function handleExport() {
+    setExportBusy(true);
+    setNotice(null);
+    try {
+      const payload = await exportAccountData();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `healthio-wellness-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setNotice({ type: "success", text: "Your wellness data export (JSON) has been downloaded." });
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || "Failed to export wellness data." });
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteBusy(true);
+    setNotice(null);
+    try {
+      await deleteAccount();
+      if (onSignOut) onSignOut();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || "Failed to delete account." });
+      setDeleteBusy(false);
+    }
+  }
+
   if (loading) return <Page><p className="loading">Loading profile…</p></Page>;
-  return <Page><Header eyebrow="YOUR PROFILE" title={data?.user?.display_name || "Your profile"} copy="Only share what you're comfortable using for personal planning. You can update this at any time." />{error && <div className="notice error">{error}</div>}<form className="panel form-grid" onSubmit={submit}><NumberField label="Age" value={form.age} onChange={update("age")} min="13" max="120" /><Select label="Gender (optional)" value={form.gender} onChange={update("gender")} options={["", "Female", "Male", "Non-binary", "Prefer not to say"]} /><NumberField label="Height (cm)" value={form.height_cm} onChange={update("height_cm")} min="80" max="250" step="0.1" /><NumberField label="Weight (kg)" value={form.weight_kg} onChange={update("weight_kg")} min="20" max="400" step="0.1" /><Select label="Goal" value={form.goal} onChange={update("goal")} options={["Fat Loss", "Muscle Gain", "Fitness", "Better routine"]} /><Select label="Activity level" value={form.activity_level} onChange={update("activity_level")} options={["Low", "Light", "Moderate", "High"]} /><Select label="Diet preference" value={form.diet_preference} onChange={update("diet_preference")} options={["Vegetarian", "Non-vegetarian", "Vegan", "Eggetarian", "No preference"]} /><label className="span-all">About your routine<textarea value={form.bio} onChange={(e) => update("bio")(e.target.value)} placeholder="Schedule, preferences, or context you want to remember" /></label><Notice notice={notice} /><FormButton busy={busy}>Save profile</FormButton></form></Page>;
+  return <Page>
+    <Header eyebrow="YOUR PROFILE" title={data?.user?.display_name || "Your profile"} copy="Only share what you're comfortable using for personal planning. You can update this at any time." />
+    {error && <div className="notice error">{error}</div>}
+    <form className="panel form-grid" onSubmit={submit}>
+      <NumberField label="Age" value={form.age} onChange={update("age")} min="13" max="120" />
+      <Select label="Gender (optional)" value={form.gender} onChange={update("gender")} options={["", "Female", "Male", "Non-binary", "Prefer not to say"]} />
+      <NumberField label="Height (cm)" value={form.height_cm} onChange={update("height_cm")} min="80" max="250" step="0.1" />
+      <NumberField label="Weight (kg)" value={form.weight_kg} onChange={update("weight_kg")} min="20" max="400" step="0.1" />
+      <Select label="Goal" value={form.goal} onChange={update("goal")} options={["Fat Loss", "Muscle Gain", "Fitness", "Better routine"]} />
+      <Select label="Activity level" value={form.activity_level} onChange={update("activity_level")} options={["Low", "Light", "Moderate", "High"]} />
+      <Select label="Diet preference" value={form.diet_preference} onChange={update("diet_preference")} options={["Vegetarian", "Non-vegetarian", "Vegan", "Eggetarian", "No preference"]} />
+      <label className="span-all">About your routine<textarea value={form.bio} onChange={(e) => update("bio")(e.target.value)} placeholder="Schedule, preferences, or context you want to remember" /></label>
+      <Notice notice={notice} />
+      <FormButton busy={busy}>Save profile</FormButton>
+    </form>
+
+    <section className="panel" style={{ marginTop: "1.5rem" }}>
+      <p className="label">DATA RIGHTS & ACCOUNT CONTROL</p>
+      <h2>Manage your personal wellness archive.</h2>
+      <p className="muted" style={{ marginBottom: "1rem" }}>
+        Export all of your self-tracked records, check-ins, workouts, and meal plans as a portable JSON file, or permanently delete your account and all associated data.
+      </p>
+      <div className="action-row" style={{ alignItems: "center" }}>
+        <button type="button" className="button secondary" onClick={handleExport} disabled={exportBusy || deleteBusy}>
+          {exportBusy ? "Preparing export…" : "Export My Wellness Data (JSON)"}
+        </button>
+        {!confirmDelete ? (
+          <button
+            type="button"
+            className="button secondary"
+            style={{ color: "var(--status-red)", borderColor: "rgba(192, 82, 74, 0.35)" }}
+            onClick={() => setConfirmDelete(true)}
+            disabled={deleteBusy || exportBusy}
+          >
+            Delete My Account & Data
+          </button>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--status-red)" }}>Permanently erase account & all records?</span>
+            <button
+              type="button"
+              className="button primary"
+              style={{ background: "var(--status-red)", borderColor: "var(--status-red)" }}
+              onClick={handleDeleteAccount}
+              disabled={deleteBusy}
+            >
+              {deleteBusy ? "Deleting…" : "Confirm Delete Account & Data"}
+            </button>
+            <button type="button" className="button secondary" onClick={() => setConfirmDelete(false)} disabled={deleteBusy}>
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  </Page>;
 }
 
 // ─── Chat ────────────────────────────────────────────
@@ -323,13 +438,13 @@ function MarkdownMessage({ content }) {
     });
   };
 
-  const lines = content.split('\\n');
+  const lines = content.split(/\r?\n/);
   const elements = [];
   let inList = false;
   let listItems = [];
 
   lines.forEach((line, i) => {
-    const listMatch = line.match(/^(?:-|\\*)\s+(.*)/);
+    const listMatch = line.match(/^[-*]\s+(.*)/);
     if (listMatch) {
       inList = true;
       listItems.push(<li key={`li-${i}`}>{parseInline(listMatch[1])}</li>);
@@ -353,87 +468,147 @@ function Metric({ label, value }) { return <article className="metric-card"><p>{
 function PlanCard({ plan }) { return <section className="panel plan-card">{plan ? <><p className="label">YOUR SAVED PLAN</p><h2>{plan.goal} · {plan.diet_type}</h2><PlanViewer text={plan.plan_text} /></> : <EmptyMessage text="Your generated plan will stay here and be saved in your history." />}</section>; }
 function PlanViewer({ text }) {
   const [currentMealIndex, setCurrentMealIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [loggingMeal, setLoggingMeal] = useState(false);
+  const [logStatus, setLogStatus] = useState(null);
+
+  useEffect(() => {
+    setCurrentMealIndex(0);
+    setCopied(false);
+    setLogStatus(null);
+  }, [text]);
 
   if (!text) return null;
+  let data = null;
   try {
-    const data = JSON.parse(text);
-    
-    if (!data.meals || data.meals.length === 0) {
-      throw new Error("No meals in JSON");
+    const parsed = JSON.parse(text);
+    if (parsed && Array.isArray(parsed.meals) && parsed.meals.length > 0) {
+      data = parsed;
     }
+  } catch {
+    data = null;
+  }
 
-    const currentMeal = data.meals[currentMealIndex] || data.meals[0];
-    const handlePrev = () => setCurrentMealIndex(i => Math.max(0, i - 1));
-    const handleNext = () => setCurrentMealIndex(i => Math.min(data.meals.length - 1, i + 1));
-    
-    const handleCopy = () => {
-      let copyText = `Meal Plan: ${data.plan_title || 'Custom Plan'}\n`;
-      if (data.daily_total_calories) copyText += `Daily Calories: ${data.daily_total_calories} kcal\n`;
-      if (data.daily_total_protein_g) copyText += `Daily Protein: ${data.daily_total_protein_g}g\n\n`;
-      
-      data.meals.forEach(meal => {
-        copyText += `--- ${meal.meal_type} ---\n`;
-        copyText += `${meal.total_calories} kcal, ${meal.total_protein_g}g protein\n`;
-        if (meal.items) {
-          meal.items.forEach(item => {
-            copyText += `• ${item.name} (${item.portion})\n`;
-          });
-        }
-        copyText += `\n`;
-      });
-      navigator.clipboard.writeText(copyText.trim());
-      alert("Plan copied to clipboard!");
-    };
-
-    return (
-      <div className="plan-structured meal-carousel" style={{ marginTop: "1rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--text-primary)" }}>{data.plan_title || "Your Meal Plan"}</h3>
-          <button className="button secondary" onClick={handleCopy} type="button" style={{ padding: "0.25rem 0.75rem", fontSize: "0.85rem", minHeight: "32px" }}>Copy Plan</button>
-        </div>
-        
-        <div className="carousel-card panel" style={{ padding: "1.5rem", borderRadius: "16px", minHeight: "250px", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <h4 style={{ margin: 0, fontSize: "1.2rem", color: "var(--brand)" }}>{currentMeal.meal_type}</h4>
-            <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", fontWeight: 500, background: "color-mix(in srgb, var(--surface) 60%, transparent)", padding: "4px 8px", borderRadius: "6px" }}>
-              {currentMeal.total_calories} kcal · {currentMeal.total_protein_g}g protein
-            </span>
-          </div>
-          
-          <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--text-secondary)", fontSize: "1rem", flex: 1 }}>
-            {currentMeal.items && currentMeal.items.map((item, j) => (
-              <li key={j} style={{ marginBottom: "0.5rem" }}>
-                <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{item.name}</span>
-                <span style={{ opacity: 0.8, marginLeft: "0.25rem" }}>({item.portion})</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="carousel-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
-            <button className="button secondary carousel-btn" type="button" onClick={handlePrev} disabled={currentMealIndex === 0} style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", minHeight: "32px", opacity: currentMealIndex === 0 ? 0.4 : 1 }}>&larr; Prev</button>
-            <span style={{ fontSize: "0.85rem", color: "var(--text-tertiary)" }}>Meal {currentMealIndex + 1} of {data.meals.length}</span>
-            <button className="button secondary carousel-btn" type="button" onClick={handleNext} disabled={currentMealIndex === data.meals.length - 1} style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", minHeight: "32px", opacity: currentMealIndex === data.meals.length - 1 ? 0.4 : 1 }}>Next &rarr;</button>
-          </div>
-        </div>
-        
-        {(data.daily_total_calories || data.daily_total_protein_g) && (
-          <div style={{ marginTop: "1.5rem", display: "flex", gap: "2rem", justifyContent: "center", textAlign: "center", background: "color-mix(in srgb, var(--surface) 60%, transparent)", padding: "1rem", borderRadius: "12px", border: "1px solid var(--border)" }}>
-            <div>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY CALORIES</span>
-              <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_calories || "--"}</b>
-            </div>
-            <div>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY PROTEIN</span>
-              <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_protein_g || "--"}g</b>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  } catch (e) {
-    console.error("PlanViewer JSON parse or render error:", e);
+  if (!data) {
     return <PlanText text={text} />;
   }
+
+  const safeIndex = currentMealIndex < data.meals.length ? currentMealIndex : 0;
+  const currentMeal = data.meals[safeIndex] || data.meals[0];
+  const handlePrev = () => { setCurrentMealIndex(i => Math.max(0, i - 1)); setLogStatus(null); };
+  const handleNext = () => { setCurrentMealIndex(i => Math.min(data.meals.length - 1, i + 1)); setLogStatus(null); };
+
+  const handleCopy = () => {
+    let copyText = `Meal Plan: ${data.plan_title || 'Custom Plan'}\n`;
+    if (data.daily_total_calories) copyText += `Daily Calories: ${data.daily_total_calories} kcal\n`;
+    if (data.daily_total_protein_g) copyText += `Daily Protein: ${data.daily_total_protein_g}g\n\n`;
+
+    data.meals.forEach(meal => {
+      copyText += `--- ${meal.meal_type} ---\n`;
+      copyText += `${meal.total_calories} kcal, ${meal.total_protein_g}g protein\n`;
+      if (meal.items) {
+        meal.items.forEach(item => {
+          copyText += `• ${item.name} (${item.portion})\n`;
+        });
+      }
+      copyText += `\n`;
+    });
+    navigator.clipboard?.writeText(copyText.trim());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLogMeal = async () => {
+    if (!currentMeal || loggingMeal) return;
+    setLoggingMeal(true);
+    setLogStatus(null);
+    try {
+      const itemSummary = Array.isArray(currentMeal.items)
+        ? currentMeal.items.map((it) => `${it.name} (${it.portion})`).join(", ")
+        : "";
+      await request("/records/food", {
+        method: "POST",
+        body: {
+          food_name: `${currentMeal.meal_type || "Planned Meal"}${itemSummary ? ` — ${itemSummary.slice(0, 70)}` : ""}`,
+          calories: Number(currentMeal.total_calories) || 0,
+          protein_g: Number(currentMeal.total_protein_g) || 0,
+          carbs_g: Number(currentMeal.total_carbs_g) || 0,
+          fat_g: Number(currentMeal.total_fat_g) || 0,
+          note: itemSummary || `Logged from ${data.plan_title || "Meal Plan"}`,
+        },
+      });
+      setLogStatus({ type: "success", text: `Logged ${currentMeal.meal_type || "meal"} to today's food!` });
+    } catch (err) {
+      setLogStatus({ type: "error", text: err.message || "Could not log meal." });
+    } finally {
+      setLoggingMeal(false);
+    }
+  };
+
+  return (
+    <div className="plan-structured meal-carousel" style={{ marginTop: "1rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "0.5rem", flexWrap: "wrap" }}>
+        <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--text-primary)" }}>{data.plan_title || "Your Meal Plan"}</h3>
+        <button className="button secondary" onClick={handleCopy} type="button" style={{ padding: "0.25rem 0.75rem", fontSize: "0.85rem", minHeight: "32px" }}>
+          {copied ? "Copied!" : "Copy Plan"}
+        </button>
+      </div>
+
+      <div className="carousel-card panel" style={{ padding: "1.5rem", borderRadius: "16px", minHeight: "250px", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "0.5rem", flexWrap: "wrap" }}>
+          <h4 style={{ margin: 0, fontSize: "1.2rem", color: "var(--brand)" }}>{currentMeal.meal_type}</h4>
+          <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", fontWeight: 500, background: "color-mix(in srgb, var(--surface) 60%, transparent)", padding: "4px 8px", borderRadius: "6px" }}>
+            {currentMeal.total_calories} kcal · {currentMeal.total_protein_g}g protein
+          </span>
+        </div>
+
+        <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--text-secondary)", fontSize: "1rem", flex: 1 }}>
+          {currentMeal.items && currentMeal.items.map((item, j) => (
+            <li key={j} style={{ marginBottom: "0.5rem" }}>
+              <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{item.name}</span>
+              <span style={{ opacity: 0.8, marginLeft: "0.25rem" }}>({item.portion})</span>
+            </li>
+          ))}
+        </ul>
+
+        <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="button primary"
+            onClick={handleLogMeal}
+            disabled={loggingMeal}
+            style={{ padding: "0.45rem 0.9rem", fontSize: "0.82rem", minHeight: "34px" }}
+          >
+            {loggingMeal ? "Logging…" : "Log Meal to Today's Food"}
+          </button>
+          {logStatus && (
+            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: logStatus.type === "error" ? "var(--status-red)" : "var(--status-green)" }}>
+              {logStatus.text}
+            </span>
+          )}
+        </div>
+
+        <div className="carousel-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.25rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
+          <button className="button secondary carousel-btn" type="button" onClick={handlePrev} disabled={safeIndex === 0} style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", minHeight: "32px", opacity: safeIndex === 0 ? 0.4 : 1 }}>&larr; Prev</button>
+          <span style={{ fontSize: "0.85rem", color: "var(--text-tertiary)" }}>Meal {safeIndex + 1} of {data.meals.length}</span>
+          <button className="button secondary carousel-btn" type="button" onClick={handleNext} disabled={safeIndex === data.meals.length - 1} style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", minHeight: "32px", opacity: safeIndex === data.meals.length - 1 ? 0.4 : 1 }}>Next &rarr;</button>
+        </div>
+      </div>
+
+      {(data.daily_total_calories || data.daily_total_protein_g) && (
+        <div style={{ marginTop: "1.5rem", display: "flex", gap: "2rem", justifyContent: "center", textAlign: "center", background: "color-mix(in srgb, var(--surface) 60%, transparent)", padding: "1rem", borderRadius: "12px", border: "1px solid var(--border)" }}>
+          <div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY CALORIES</span>
+            <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_calories || "--"}</b>
+          </div>
+          <div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>DAILY PROTEIN</span>
+            <b style={{ fontSize: "1.2rem", color: "var(--text-primary)" }}>{data.daily_total_protein_g || "--"}g</b>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 function PlanText({ text }) { return <div className="plan-text">{text.split("\n").map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line ? <p key={index}>{line.replace(/^- /, "• ")}</p> : <br key={index} />)}</div>; }
 function HistoryItem({ record, onDelete }) {

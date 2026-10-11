@@ -45,13 +45,13 @@ export async function signInWithGooglePopup() {
     };
   } catch (err) {
     if (err.code === "auth/unauthorized-domain") {
-      throw new Error(`Domain (${window.location.hostname}) is not authorized in Firebase Console. Add '${window.location.hostname}' to Firebase Authorized Domains.`);
+      throw new Error(`Domain (${window.location.hostname}) is not authorized in Firebase Console. Add '${window.location.hostname}' to Firebase Authorized Domains.`, { cause: err });
     }
     if (err.code === "auth/popup-closed-by-user") {
-      throw new Error("Sign-in popup was closed before completing.");
+      throw new Error("Sign-in popup was closed before completing.", { cause: err });
     }
     if (err.code === "auth/cancelled-popup-request") {
-      throw new Error("Only one popup request is allowed at a time.");
+      throw new Error("Only one popup request is allowed at a time.", { cause: err });
     }
     throw err;
   }

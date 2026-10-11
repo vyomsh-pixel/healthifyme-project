@@ -7,6 +7,7 @@ export default function HealthScoreMark({ score = 0 }) {
   const [displayScore, setDisplayScore] = useState(0);
   useEffect(() => {
     let start = null;
+    let rafId = null;
     const duration = 1500;
     const step = (timestamp) => {
       if (!start) start = timestamp;
@@ -14,12 +15,15 @@ export default function HealthScoreMark({ score = 0 }) {
       const ease = 1 - Math.pow(1 - progress, 4);
       setDisplayScore(Math.floor(ease * pct));
       if (progress < 1) {
-        window.requestAnimationFrame(step);
+        rafId = window.requestAnimationFrame(step);
       } else {
         setDisplayScore(pct);
       }
     };
-    window.requestAnimationFrame(step);
+    rafId = window.requestAnimationFrame(step);
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
   }, [pct]);
 
   let strokeColor = "var(--status-red)";

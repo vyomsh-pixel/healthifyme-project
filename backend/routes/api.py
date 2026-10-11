@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
-from datetime import UTC, date, datetime
+from datetime import UTC, date as dt_date, datetime
 from typing import Any, Annotated
 
 import psycopg2.errors
@@ -118,28 +119,26 @@ def google_auth(payload: GoogleAuthRequest) -> dict[str, Any]:
     email = payload.email
     display_name = payload.display_name
 
-    if id_token_str and (not google_id or not email):
+    if id_token_str:
         try:
             from google.auth.transport import requests as google_requests
             from google.oauth2 import id_token as google_id_token
-            decoded = google_id_token.verify_oauth2_token(id_token_str, google_requests.Request())
-            google_id = decoded.get("sub") or google_id
-            email = decoded.get("email") or email
-            display_name = decoded.get("name") or display_name
-        except Exception:
+            project_id = os.environ.get("FIREBASE_PROJECT_ID", "healthio-13cb9")
+            req = google_requests.Request()
             try:
-                import base64
-                import json
-                parts = id_token_str.split(".")
-                if len(parts) >= 2:
-                    padding = "=" * (4 - len(parts[1]) % 4)
-                    payload_json = base64.urlsafe_b64decode(parts[1] + padding).decode("utf-8")
-                    claims = json.loads(payload_json)
-                    google_id = claims.get("user_id") or claims.get("sub") or google_id
-                    email = claims.get("email") or email
-                    display_name = claims.get("name") or claims.get("display_name") or display_name
+                decoded = google_id_token.verify_firebase_token(id_token_str, req, audience=project_id)
             except Exception:
-                pass
+                decoded = google_id_token.verify_oauth2_token(id_token_str, req)
+            google_id = decoded.get("user_id") or decoded.get("sub")
+            email = decoded.get("email")
+            display_name = decoded.get("name") or display_name
+        except Exception as error:
+            raise HTTPException(status_code=401, detail="Invalid or expired Google ID token.") from error
+    else:
+        if not google_id or not email:
+            raise HTTPException(status_code=400, detail="Google authentication payload missing required fields.")
+        if not (os.environ.get("HEALTHIO_TEST_MODE") == "1" or "PYTEST_CURRENT_TEST" in os.environ):
+            raise HTTPException(status_code=401, detail="A verified Google ID token is required.")
 
     if not google_id or not email:
         raise HTTPException(status_code=400, detail="Google authentication payload missing required fields.")
@@ -174,6 +173,49 @@ def logout(current_user: CurrentUser, authorization: Annotated[str | None, Heade
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/account/export")
+def export_account(current_user: CurrentUser) -> dict[str, Any]:
+    user_id = current_user["id"]
+    with database() as connection:
+        profile = get_profile(connection, user_id)
+        health_records = get_records(connection, user_id, limit=1000)
+        workout_rows = connection.execute(
+            "SELECT * FROM workouts WHERE user_id = ? ORDER BY created_at DESC", (user_id,)
+        ).fetchall()
+        workouts = [{**dict(row), "exercises": json.loads(row["exercises"])} for row in workout_rows]
+        meal_plans = [
+            dict(row)
+            for row in connection.execute(
+                "SELECT * FROM meal_plans WHERE user_id = ? ORDER BY created_at DESC", (user_id,)
+            ).fetchall()
+        ]
+        checkins = [
+            dict(row)
+            for row in connection.execute(
+                "SELECT * FROM daily_checkins WHERE user_id = ? ORDER BY checkin_date DESC", (user_id,)
+            ).fetchall()
+        ]
+        return {
+            "user": current_user,
+            "profile": profile,
+            "health_records": health_records,
+            "workouts": workouts,
+            "meal_plans": meal_plans,
+            "checkins": checkins,
+            "exported_at": datetime.now(UTC).isoformat(),
+        }
+
+
+@router.delete("/account")
+def delete_account(current_user: CurrentUser) -> dict[str, str]:
+    user_id = current_user["id"]
+    with database() as connection:
+        for table in ("chat_messages", "meal_plans", "workouts", "daily_checkins", "health_records", "profiles", "sessions"):
+            connection.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    return {"status": "deleted"}
+
+
 @router.get("/me")
 def me(current_user: CurrentUser) -> dict[str, Any]:
     with database() as connection:
@@ -199,13 +241,15 @@ def update_profile(payload: ProfileRequest, current_user: CurrentUser) -> dict[s
 
 
 @router.get("/dashboard")
-def dashboard(current_user: CurrentUser) -> dict[str, Any]:
+def dashboard(current_user: CurrentUser, date: str | None = None) -> dict[str, Any]:
+    target_date = date or dt_date.today().isoformat()
     with database() as connection:
+        profile = get_profile(connection, current_user["id"])
         records = get_records(connection, current_user["id"], limit=200)
         by_type = {kind: [record for record in records if record["type"] == kind] for kind in ("BMI", "FOOD", "SKIN")}
         meals = [dict(row) for row in connection.execute("SELECT * FROM meal_plans WHERE user_id = ? ORDER BY created_at DESC", (current_user["id"],)).fetchall()]
         workouts = [dict(row) for row in connection.execute("SELECT * FROM workouts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC", (current_user["id"],)).fetchall()]
-        today_food = [record for record in by_type["FOOD"] if str(record["created_at"]).startswith(date.today().isoformat())]
+        today_food = [record for record in by_type["FOOD"] if str(record["created_at"]).startswith(target_date)]
         calories = sum(record.get("calories", 0) for record in today_food)
         protein = sum(record.get("protein_g", 0) for record in today_food)
         latest_bmi = by_type["BMI"][0] if by_type["BMI"] else None
@@ -214,7 +258,7 @@ def dashboard(current_user: CurrentUser) -> dict[str, Any]:
             score += 30 if 18.5 <= latest_bmi["bmi"] < 25 else 15
         score += min(25, len(workouts) * 5)
         score += min(20, len(today_food) * 5)
-        score += 15 if get_profile(connection, current_user["id"]) else 0
+        score += 15 if profile else 0
         score += min(10, len(meals) * 2)
         activity = sorted(
             [{"type": record["type"], "created_at": record["created_at"], "id": record["id"]} for record in records]
@@ -223,7 +267,7 @@ def dashboard(current_user: CurrentUser) -> dict[str, Any]:
             key=lambda item: item["created_at"], reverse=True,
         )[:6]
         return {
-            "user": current_user, "profile": get_profile(connection, current_user["id"]), "health_score": min(score, 100),
+            "user": current_user, "profile": profile, "health_score": min(score, 100),
             "counts": {"bmi_records": len(by_type["BMI"]), "food_logs": len(by_type["FOOD"]), "skin_logs": len(by_type["SKIN"]), "meal_plans": len(meals), "completed_workouts": len(workouts)},
             "today_nutrition": {"calories": calories, "protein_g": protein, "calorie_goal": 2200, "protein_goal": 140},
             "latest": {"bmi": latest_bmi, "food": by_type["FOOD"][0] if by_type["FOOD"] else None, "skin": by_type["SKIN"][0] if by_type["SKIN"] else None, "meal": meals[0] if meals else None},
@@ -276,7 +320,7 @@ def meal_plans(current_user: CurrentUser) -> dict[str, Any]:
 
 @router.post("/workouts/generate", dependencies=[Depends(user_limit)])
 def generate_workout(payload: WorkoutRequest, current_user: CurrentUser) -> dict[str, Any]:
-    exercises = make_workout(payload.location, payload.level, payload.duration_minutes, payload.rest_seconds, payload.weight_kg)
+    exercises = make_workout(payload.location, payload.level, payload.duration_minutes, payload.rest_seconds, payload.weight_kg, goal=payload.goal)
     with database() as connection:
         cursor = connection.execute(
             "INSERT INTO workouts (user_id, goal, level, location, duration_minutes, exercises) VALUES (?, ?, ?, ?, ?, ?)",
@@ -342,7 +386,8 @@ def clear_chat(current_user: CurrentUser) -> Response:
 
 
 @router.put("/checkins/today")
-def save_checkin(payload: CheckinRequest, current_user: CurrentUser) -> dict[str, Any]:
+def save_checkin(payload: CheckinRequest, current_user: CurrentUser, date: str | None = None) -> dict[str, Any]:
+    target_date = date or dt_date.today().isoformat()
     with database() as connection:
         connection.execute(
             """
@@ -351,9 +396,9 @@ def save_checkin(payload: CheckinRequest, current_user: CurrentUser) -> dict[str
             ON CONFLICT(user_id, checkin_date) DO UPDATE SET sleep_hours=excluded.sleep_hours, steps=excluded.steps,
               water_glasses=excluded.water_glasses, mood=excluded.mood, energy=excluded.energy, soreness=excluded.soreness, note=excluded.note
             """,
-            {"user_id": current_user["id"], "checkin_date": date.today().isoformat(), **payload.model_dump()},
+            {"user_id": current_user["id"], "checkin_date": target_date, **payload.model_dump()},
         )
-        row = connection.execute("SELECT * FROM daily_checkins WHERE user_id = ? AND checkin_date = ?", (current_user["id"], date.today().isoformat())).fetchone()
+        row = connection.execute("SELECT * FROM daily_checkins WHERE user_id = ? AND checkin_date = ?", (current_user["id"], target_date)).fetchone()
         return {"checkin": dict(row)}
 
 
@@ -446,11 +491,12 @@ def analytics(current_user: CurrentUser) -> dict[str, Any]:
 
 
 @router.get("/checkins/today")
-def get_today_checkin(current_user: CurrentUser) -> dict[str, Any]:
+def get_today_checkin(current_user: CurrentUser, date: str | None = None) -> dict[str, Any]:
+    target_date = date or dt_date.today().isoformat()
     with database() as connection:
         row = connection.execute(
             "SELECT * FROM daily_checkins WHERE user_id = ? AND checkin_date = ?",
-            (current_user["id"], date.today().isoformat()),
+            (current_user["id"], target_date),
         ).fetchone()
         return {"checkin": dict(row) if row else None}
 

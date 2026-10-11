@@ -16,6 +16,11 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
+
+
+_pg_pool: psycopg2.pool.SimpleConnectionPool | None = None
+_pg_pool_url: str | None = None
 
 
 class CursorWrapper:
@@ -35,8 +40,9 @@ class CursorWrapper:
 
 
 class PostgresConnectionWrapper:
-    def __init__(self, conn):
+    def __init__(self, conn, pool: psycopg2.pool.SimpleConnectionPool | None = None):
         self.conn = conn
+        self.pool = pool
 
     def execute(self, query: str, vars=None):
         if isinstance(vars, dict):
@@ -94,7 +100,10 @@ class PostgresConnectionWrapper:
         self.conn.rollback()
 
     def close(self):
-        self.conn.close()
+        if self.pool is not None:
+            self.pool.putconn(self.conn)
+        else:
+            self.conn.close()
 
 
 class SQLiteConnectionWrapper:
@@ -129,6 +138,7 @@ class SQLiteConnectionWrapper:
 
 
 def get_connection():
+    global _pg_pool, _pg_pool_url
     database_url = (
         os.getenv("DATABASE_URL")
         or os.getenv("SUPABASE_DB_URL")
@@ -164,8 +174,13 @@ def get_connection():
         }
         if "sslmode" not in clean_url:
             conn_kwargs["sslmode"] = "require"
-        connection = psycopg2.connect(clean_url, **conn_kwargs)
-        return PostgresConnectionWrapper(connection)
+        if _pg_pool is None or _pg_pool_url != clean_url:
+            _pg_pool = psycopg2.pool.SimpleConnectionPool(
+                minconn=1, maxconn=5, dsn=clean_url, **conn_kwargs
+            )
+            _pg_pool_url = clean_url
+        connection = _pg_pool.getconn()
+        return PostgresConnectionWrapper(connection, pool=_pg_pool)
 
     sqlite_path = os.getenv("SQLITE_DB_PATH")
     if not sqlite_path:
@@ -241,6 +256,8 @@ def initialise_database() -> None:
                 meals_per_day INTEGER NOT NULL, extra_instructions TEXT,
                 plan_text TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE INDEX IF NOT EXISTS idx_meal_plans_user_date
+              ON meal_plans(user_id, created_at DESC);
 
             CREATE TABLE IF NOT EXISTS workouts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,6 +267,8 @@ def initialise_database() -> None:
                 exercises TEXT NOT NULL, completed_at TIMESTAMP WITH TIME ZONE,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE INDEX IF NOT EXISTS idx_workouts_user_date
+              ON workouts(user_id, created_at DESC);
 
             CREATE TABLE IF NOT EXISTS chat_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,6 +276,8 @@ def initialise_database() -> None:
                 role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
                 content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id
+              ON chat_messages(user_id, id ASC);
 
             CREATE TABLE IF NOT EXISTS daily_checkins (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

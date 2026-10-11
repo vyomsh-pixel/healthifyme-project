@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 
-export default function StatCard({ label, value, unit, accent = false }) {
+export default function StatCard({ label, value, unit }) {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     let start = null;
+    let rafId = null;
     const duration = 1200;
     const end = parseFloat(value) || 0;
     if (end === 0) {
@@ -17,12 +18,15 @@ export default function StatCard({ label, value, unit, accent = false }) {
       const ease = 1 - Math.pow(1 - progress, 4);
       setDisplayValue(Math.floor(ease * end));
       if (progress < 1) {
-        window.requestAnimationFrame(step);
+        rafId = window.requestAnimationFrame(step);
       } else {
         setDisplayValue(end);
       }
     };
-    window.requestAnimationFrame(step);
+    rafId = window.requestAnimationFrame(step);
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
   }, [value]);
 
   // Determine colored glass background based on label

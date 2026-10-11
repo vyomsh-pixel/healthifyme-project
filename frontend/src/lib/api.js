@@ -73,6 +73,12 @@ export async function request(path, { method = "GET", body, token = getSession()
     }
 
     if (!response.ok) {
+      if (response.status === 401 && !path.startsWith("/auth/")) {
+        clearSession();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("healthio:unauthorized"));
+        }
+      }
       throw new Error(normalizeErrorMessage(data));
     }
     return data;
@@ -83,10 +89,23 @@ export async function request(path, { method = "GET", body, token = getSession()
         await new Promise(resolve => setTimeout(resolve, 1500));
         return request(path, { method, body, token, retries: retries - 1 });
       }
-      throw new Error("Network issue — check your connection or wait a moment and try again.");
+      throw new Error("Network issue — check your connection or wait a moment and try again.", { cause: err });
     }
     throw err;
   }
+}
+
+export function formatDate(value, fallback = "—") {
+  if (!value) return fallback;
+  const normalized = String(value).trim().replace(" ", "T");
+  const hasTz = normalized.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(normalized);
+  const iso = hasTz ? normalized : `${normalized}Z`;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return fallback;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
 }
 
 export async function authenticate(mode, values) {
@@ -101,6 +120,18 @@ export async function authenticateGoogle(authPayload) {
   return session;
 }
 
+export async function exportAccountData() {
+  return request("/account/export", { method: "GET" });
+}
+
+export async function deleteAccount() {
+  const result = await request("/account", { method: "DELETE" });
+  clearSession();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("healthio:unauthorized"));
+  }
+  return result;
+}
 
 export function signOut() {
   const token = getSession()?.token;
