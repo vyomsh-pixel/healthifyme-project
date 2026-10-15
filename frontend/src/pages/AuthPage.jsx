@@ -6,9 +6,6 @@ import { signInWithGooglePopup } from "../lib/firebase";
 export const MANDATORY_DISCLAIMER =
   "Health.io is a personal wellness visualization tool for self-tracking. It is not intended to diagnose, treat, or replace professional medical advice.";
 
-export const CONSENT_COPY =
-  "I consent to Health.io storing my self-tracked wellness metrics and processing inputs via AI for personal visualization.";
-
 export function LegalDocumentModal({ docType, onClose }) {
   if (!docType) return null;
   const isPrivacy = docType === "privacy";
@@ -56,8 +53,6 @@ export default function AuthPage({ onAuthenticated }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ display_name: "", username: "", password: "" });
-  const [consentData, setConsentData] = useState(false);
-  const [consentDisclaimer, setConsentDisclaimer] = useState(false);
   const [legalDoc, setLegalDoc] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -105,17 +100,8 @@ export default function AuthPage({ onAuthenticated }) {
     timersRef.current.push(t1, t2);
   }
 
-  function verifyConsentGate() {
-    if (!consentData || !consentDisclaimer) {
-      setError("Please accept both the Data Consent and Wellness Disclaimer checkboxes before continuing.");
-      return false;
-    }
-    return true;
-  }
-
   async function handleGoogleSignIn() {
     setError("");
-    if (!verifyConsentGate()) return;
     setBusy(true);
     try {
       const googleData = await signInWithGooglePopup();
@@ -130,12 +116,11 @@ export default function AuthPage({ onAuthenticated }) {
   async function submit(event) {
     event.preventDefault();
     setError("");
-    if (!verifyConsentGate()) return;
     setBusy(true);
     try {
       const payload =
         mode === "login"
-          ? { username: form.username, password: form.password }
+          ? { username: form.username, password: form.password, consent_accepted: true }
           : { ...form, consent_accepted: true };
       const session = await authenticate(mode, payload);
       startTransition(session);
@@ -144,8 +129,6 @@ export default function AuthPage({ onAuthenticated }) {
       setBusy(false);
     }
   }
-
-  const allConsented = consentData && consentDisclaimer;
 
   return (
     <main className={`auth-shell ${isShattering ? "shattering" : ""}`}>
@@ -163,67 +146,16 @@ export default function AuthPage({ onAuthenticated }) {
         <div style={{ position: "relative", zIndex: 10 }}>
           <p className="eyebrow">BREAK THE BARRIER</p>
           <h1 className="brand-title">Health<span>.io</span></h1>
-          <p className="auth-copy" style={{ color: "var(--text-primary)", fontWeight: "600", marginBottom: "1.25rem", fontSize: "1.15rem", lineHeight: 1.4, letterSpacing: "-0.01em" }}>
+          <p className="auth-copy">
             Life happens behind a screen.<br />Health.io is the crack in the glass.
           </p>
-
-          {/* Mandatory Pre-Use Consent & Wellness Disclaimer Gate */}
-          <fieldset className="consent-gate" aria-label="Data authorization and wellness disclaimer">
-            <legend className="eyebrow" style={{ marginBottom: "0.5rem" }}>REQUIRED BEFORE CONTINUING</legend>
-            <label className="consent-checkbox-label" htmlFor="consent-data-checkbox">
-              <input
-                id="consent-data-checkbox"
-                type="checkbox"
-                required
-                checked={consentData}
-                onChange={(e) => {
-                  setConsentData(e.target.checked);
-                  if (error) setError("");
-                }}
-              />
-              <span>{CONSENT_COPY}</span>
-            </label>
-            <label className="consent-checkbox-label" htmlFor="consent-disclaimer-checkbox">
-              <input
-                id="consent-disclaimer-checkbox"
-                type="checkbox"
-                required
-                checked={consentDisclaimer}
-                onChange={(e) => {
-                  setConsentDisclaimer(e.target.checked);
-                  if (error) setError("");
-                }}
-              />
-              <span>{MANDATORY_DISCLAIMER}</span>
-            </label>
-          </fieldset>
-
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={busy || isShattering}
-            className="google-auth-button"
-            aria-label="Continue with Google authentication"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-            </svg>
-            <span>Continue with Google</span>
-          </button>
-
-          <div className="auth-divider">
-            <span>or with password</span>
-          </div>
 
           <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
             <button
               role="tab"
               aria-selected={mode === "login"}
               className={mode === "login" ? "active" : ""}
-              onClick={() => setMode("login")}
+              onClick={() => { setMode("login"); setError(""); }}
               type="button"
             >
               Sign in
@@ -232,7 +164,7 @@ export default function AuthPage({ onAuthenticated }) {
               role="tab"
               aria-selected={mode === "register"}
               className={mode === "register" ? "active" : ""}
-              onClick={() => setMode("register")}
+              onClick={() => { setMode("register"); setError(""); }}
               type="button"
             >
               Create account
@@ -279,20 +211,41 @@ export default function AuthPage({ onAuthenticated }) {
             {error && <p className="form-error" role="alert">{error}</p>}
             <button
               className="button primary"
-              disabled={busy || isShattering || !allConsented}
-              title={!allConsented ? "Please accept both checkboxes above to continue" : undefined}
+              disabled={busy || isShattering}
             >
               {busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create secure account"}
             </button>
           </form>
 
-          <p className="fine-print">{MANDATORY_DISCLAIMER}</p>
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={busy || isShattering}
+            className="google-auth-button"
+            aria-label="Continue with Google authentication"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+
+          <p className="fine-print">
+            {MANDATORY_DISCLAIMER}
+          </p>
           <div className="auth-legal-links">
-            <Link to="/privacy" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); navigate("/privacy"); }}>
+            <Link to="/privacy" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }}>
               Privacy Policy
             </Link>
             <span aria-hidden="true">·</span>
-            <Link to="/terms" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); navigate("/terms"); }}>
+            <Link to="/terms" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }}>
               Terms of Service
             </Link>
           </div>
