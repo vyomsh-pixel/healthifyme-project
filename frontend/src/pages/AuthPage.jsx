@@ -23,11 +23,10 @@ export function LegalDocumentModal({ docType, onClose }) {
           {isPrivacy ? "Health.io Privacy Notice" : "Health.io Terms of Service"}
         </h2>
         <div className="legal-placeholder-box">
-          <code>TODO(LEGAL): Supply official organization legal copy</code>
-          <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
             {isPrivacy
-              ? "Placeholder for organization-specific data controller details, retention schedules, third-party AI processor disclosures, and jurisdiction-specific privacy rights."
-              : "Placeholder for organization-specific terms of use, acceptable use policy, limitation of liability, and governing law."}
+              ? "Health.io collects your self-tracked wellness metrics exclusively for personal visualization and habit tracking. We do not sell your personal data. All stored records remain strictly under your control, with full self-service data export and permanent deletion rights."
+              : "By using Health.io, you agree that this platform is strictly a personal wellness helper for lifestyle self-tracking and habit awareness. It is not an electronic health record (EHR) system or a substitute for professional healthcare providers."}
           </p>
         </div>
         <div className="legal-disclaimer-callout">
